@@ -221,7 +221,7 @@ function ReportDocument({ report, shareToken }: { report: PartialReport; shareTo
             ),
             React.createElement(Text, { style: S.winTitle }, win.title)
           ),
-          React.createElement(Text, { style: S.winImpact }, win.businessImpact),
+          React.createElement(Text, { style: S.winImpact }, win.whyItMatters),
           React.createElement(View, { style: S.winFix },
             React.createElement(Text, { style: S.winFixLabel }, "How to fix it"),
             React.createElement(Text, { style: S.winFixText }, win.howToFix),

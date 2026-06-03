@@ -1,27 +1,33 @@
 import type {
   ScrapedData, PageSpeedData, AuditScores,
-  DimensionScore, Finding, FindingCheck, ScoreLabel,
+  DimensionScore, Finding, FindingCheck, ScoreLabel, PageType,
 } from "@/types";
 import { calculateOverallScore } from "@/lib/utils";
 
 // ─── Severity weights for score calculation ──────────────────────────────────
 const SEVERITY_DEDUCTIONS: Record<string, number> = {
-  critical: 30,
-  high:     18,
-  medium:   10,
-  low:       4,
-  pass:       0,
+  critical: 40,
+  high:     20,
+  medium:    8,
+  low:       2,
+  pass:      0,
 };
 
 // ─── Performance scoring ─────────────────────────────────────────────────────
-function scorePerformance(ps: PageSpeedData): DimensionScore {
+function scorePerformance(ps: PageSpeedData, scraped: ScrapedData): DimensionScore {
   const findings: Finding[] = [];
 
+  // Viewport/Mobile responsiveness
+  if (!scraped.hasViewport) {
+    findings.push({ check: "missing_viewport", category: "performance", severity: "critical" });
+  }
+
   // LCP: good <2.5s, needs improvement 2.5–4s, poor >4s
+  // Ecommerce is heavily impacted by speed, so we penalize it more.
   if (ps.lcp > 4.0) {
-    findings.push({ check: "lcp_slow", category: "performance", severity: "critical", detail: `${ps.lcp.toFixed(1)}s` });
+    findings.push({ check: "lcp_slow", category: "performance", severity: scraped.pageType === "ecommerce" ? "critical" : "high", detail: `${ps.lcp.toFixed(1)}s` });
   } else if (ps.lcp > 2.5) {
-    findings.push({ check: "lcp_slow", category: "performance", severity: "high", detail: `${ps.lcp.toFixed(1)}s` });
+    findings.push({ check: "lcp_slow", category: "performance", severity: scraped.pageType === "ecommerce" ? "high" : "medium", detail: `${ps.lcp.toFixed(1)}s` });
   } else {
     findings.push({ check: "fast_lcp", category: "performance", severity: "pass", detail: `${ps.lcp.toFixed(1)}s` });
   }
@@ -75,9 +81,16 @@ function scoreTrust(scraped: ScrapedData): DimensionScore {
   // (Checked at the PageSpeed/fetch level — if we got data the SSL is fine)
   findings.push({ check: "ssl_active", category: "trust", severity: "pass" });
 
-  // Phone number — critical for service businesses
+  // Phone number — context aware
   if (!scraped.hasPhone) {
-    findings.push({ check: "no_phone_number", category: "trust", severity: "high" });
+    if (scraped.pageType === "local_business" || scraped.pageType === "service_business") {
+      findings.push({ check: "no_phone_number", category: "trust", severity: "high" });
+    } else if (scraped.pageType === "ecommerce") {
+      findings.push({ check: "no_phone_number", category: "trust", severity: "medium" });
+    } else {
+      // SaaS and Blogs don't strictly need phone numbers
+      findings.push({ check: "no_phone_number", category: "trust", severity: "pass" });
+    }
   } else {
     findings.push({ check: "has_phone", category: "trust", severity: "pass", detail: scraped.phoneNumber ?? undefined });
   }
@@ -89,7 +102,11 @@ function scoreTrust(scraped: ScrapedData): DimensionScore {
 
   // Testimonials — very high impact for conversions
   if (!scraped.hasTestimonials) {
-    findings.push({ check: "no_testimonials", category: "trust", severity: "high" });
+    if (scraped.pageType === "service_business" || scraped.pageType === "saas") {
+      findings.push({ check: "no_testimonials", category: "trust", severity: "high" });
+    } else {
+      findings.push({ check: "no_testimonials", category: "trust", severity: "medium" });
+    }
   } else {
     findings.push({ check: "has_testimonials", category: "trust", severity: "pass" });
   }
@@ -101,14 +118,20 @@ function scoreTrust(scraped: ScrapedData): DimensionScore {
     findings.push({ check: "about_not_in_nav", category: "trust", severity: "low" });
   }
 
-  // Privacy policy
+  // Privacy policy (legal trust)
   if (!scraped.hasPrivacyPolicy) {
-    findings.push({ check: "no_privacy_policy", category: "trust", severity: "medium" });
+    findings.push({ check: "no_privacy_policy", category: "trust", severity: scraped.pageType === "ecommerce" ? "high" : "medium" });
   }
 
-  // Address (especially important for local businesses)
+  // Address (essential for local, good for ecommerce, irrelevant for SaaS/blog)
   if (!scraped.hasAddress) {
-    findings.push({ check: "no_address", category: "trust", severity: "low" });
+    if (scraped.pageType === "local_business") {
+      findings.push({ check: "no_address", category: "trust", severity: "high" });
+    } else if (scraped.pageType === "ecommerce" || scraped.pageType === "service_business") {
+      findings.push({ check: "no_address", category: "trust", severity: "medium" });
+    } else {
+      findings.push({ check: "no_address", category: "trust", severity: "pass" });
+    }
   }
 
   // Social links
@@ -118,7 +141,18 @@ function scoreTrust(scraped: ScrapedData): DimensionScore {
 
   // Trust badges
   if (!scraped.hasTrustBadges) {
-    findings.push({ check: "no_trust_badges", category: "trust", severity: "low" });
+    if (scraped.pageType === "ecommerce") {
+      findings.push({ check: "no_trust_badges", category: "trust", severity: "high" });
+    } else {
+      findings.push({ check: "no_trust_badges", category: "trust", severity: "low" });
+    }
+  }
+
+  // Trust sequencing (High friction if asking for money/info without trust signals)
+  const askingForCommitment = scraped.hasPricing || scraped.hasContactForm || scraped.ctaCount > 0;
+  const hasTrustSignals = scraped.hasTestimonials || scraped.hasTrustBadges;
+  if (askingForCommitment && !hasTrustSignals) {
+    findings.push({ check: "trust_sequencing_friction", category: "trust", severity: "high", detail: "Asking for conversion before proving value" });
   }
 
   const score = deductionsToScore(findings);
@@ -131,9 +165,9 @@ function scoreClarity(scraped: ScrapedData): DimensionScore {
 
   // H1
   if (scraped.h1s.length === 0) {
-    findings.push({ check: "missing_h1", category: "clarity", severity: "high" });
+    findings.push({ check: "missing_h1", category: "clarity", severity: "medium" });
   } else if (scraped.h1s.length > 1) {
-    findings.push({ check: "multiple_h1", category: "clarity", severity: "medium", detail: `${scraped.h1s.length} H1s found` });
+    findings.push({ check: "multiple_h1", category: "clarity", severity: "pass", detail: `${scraped.h1s.length} H1s found` });
   } else {
     findings.push({ check: "good_heading_structure", category: "clarity", severity: "pass" });
   }
@@ -161,9 +195,21 @@ function scoreClarity(scraped: ScrapedData): DimensionScore {
 
   // Value proposition (H1 should be meaningful, not just brand name)
   const h1 = scraped.h1s[0] || "";
-  const seemsGeneric = h1.length < 10 || /^home|welcome|hello$/i.test(h1.trim());
+  const h1Trimmed = h1.trim();
+  const seemsGeneric = h1Trimmed.length < 10 || /^home|welcome|hello$/i.test(h1Trimmed);
+  const seemsWeak = h1Trimmed.split(" ").length <= 2; // e.g., "Software Solutions"
+
   if (seemsGeneric && scraped.h1s.length > 0) {
-    findings.push({ check: "no_value_proposition", category: "clarity", severity: "medium", detail: `"${h1}"` });
+    findings.push({ check: "no_value_proposition", category: "clarity", severity: "high", detail: `"${h1Trimmed}"` });
+  } else if (seemsWeak && scraped.h1s.length > 0) {
+    findings.push({ check: "weak_value_proposition", category: "clarity", severity: "medium", detail: `"${h1Trimmed}"` });
+  }
+
+  // Content Density & Messaging Hierarchy
+  if (scraped.bodyWordCount > 800 && scraped.h2s.length === 0 && scraped.h3s.length === 0) {
+    findings.push({ check: "wall_of_text", category: "clarity", severity: "high", detail: `${scraped.bodyWordCount} words with no subheadings` });
+  } else if (scraped.bodyWordCount < 50 && scraped.pageType !== "portfolio") {
+    findings.push({ check: "thin_content", category: "clarity", severity: "medium", detail: `Only ${scraped.bodyWordCount} words found` });
   }
 
   // Navigation complexity
@@ -186,7 +232,11 @@ function scoreConversion(scraped: ScrapedData): DimensionScore {
 
   // CTA presence
   if (scraped.ctaCount === 0) {
-    findings.push({ check: "no_cta", category: "conversion", severity: "critical" });
+    if (scraped.pageType === "blog") {
+      findings.push({ check: "no_clear_cta_detected", category: "conversion", severity: "medium" });
+    } else {
+      findings.push({ check: "no_clear_cta_detected", category: "conversion", severity: "critical" });
+    }
   } else {
     // Check for generic CTA text
     const genericPhrases = ["click here", "learn more", "read more", "get in touch", "contact us", "submit"];
@@ -207,7 +257,12 @@ function scoreConversion(scraped: ScrapedData): DimensionScore {
 
   // Contact form
   if (!scraped.hasContactForm) {
-    findings.push({ check: "no_contact_form", category: "conversion", severity: "high" });
+    if (scraped.pageType === "ecommerce" || scraped.pageType === "saas") {
+      // Ecom and SaaS use carts/signups, contact form is optional
+      findings.push({ check: "no_contact_form", category: "conversion", severity: "pass" });
+    } else {
+      findings.push({ check: "no_contact_form", category: "conversion", severity: "high" });
+    }
   } else {
     // Long forms hurt conversions
     if (scraped.formFieldCount > 6) {
@@ -232,6 +287,17 @@ function scoreConversion(scraped: ScrapedData): DimensionScore {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+function sortFindings(findings: Finding[]): Finding[] {
+  const severityOrder: Record<string, number> = {
+    critical: 4,
+    high: 3,
+    medium: 2,
+    low: 1,
+    pass: 0
+  };
+  return findings.sort((a, b) => severityOrder[b.severity] - severityOrder[a.severity]);
+}
+
 function deductionsToScore(findings: Finding[]): number {
   const totalDeduction = findings.reduce((acc, f) => {
     if (f.severity === "pass") return acc;
@@ -252,10 +318,16 @@ export function calculateScores(
   scraped: ScrapedData,
   pageSpeed: PageSpeedData
 ): AuditScores {
-  const performance = scorePerformance(pageSpeed);
+  const performance = scorePerformance(pageSpeed, scraped);
   const trust       = scoreTrust(scraped);
   const clarity     = scoreClarity(scraped);
   const conversion  = scoreConversion(scraped);
+
+  // Pre-sort findings by severity so AI processes critical issues first
+  performance.findings = sortFindings(performance.findings);
+  trust.findings = sortFindings(trust.findings);
+  clarity.findings = sortFindings(clarity.findings);
+  conversion.findings = sortFindings(conversion.findings);
 
   const overall = calculateOverallScore({
     performance: performance.score,

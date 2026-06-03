@@ -1,79 +1,49 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { GoogleGenAI } from "@google/genai";
 import type {
   AuditScores, ScrapedData, PageSpeedData,
   AIReport, QuickWin, SectionInsight, ScreenshotData, PageType,
 } from "@/types";
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+// Initialize cautiously so it doesn't crash on import if key is missing
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "missing" });
 
 // ─── Industry context blocks injected into the prompt ─────────────────────────
 const INDUSTRY_CONTEXT: Record<PageType, string> = {
-  service_business: `
-This is a service business website (agency, consultant, freelancer, or professional services).
-Key conversion drivers for this type: trust signals (testimonials, credentials, contact info),
-clear service descriptions, easy contact methods, and social proof. Visitors are evaluating
-whether to hire this person/company — trust is the #1 factor.`,
-
-  ecommerce: `
-This is an ecommerce or online shop. Key conversion drivers: product clarity, trust badges,
-shipping info visibility, easy cart/checkout flow, customer reviews, and return policy visibility.
-Visitors need to feel safe handing over payment details — security signals are critical.`,
-
-  saas: `
-This is a SaaS or software product website. Key conversion drivers: clear value proposition,
-free trial or demo CTA above the fold, pricing transparency, feature comparisons, and
-social proof from recognisable customers. Visitors are evaluating whether the software
-solves their specific problem — clarity and specificity beat generic claims.`,
-
-  portfolio: `
-This is a portfolio or personal brand website. Key conversion drivers: visible contact info,
-clear showcase of work/case studies, personality and voice, and an obvious "hire me" or
-"work together" CTA. Visitors are evaluating fit — authenticity matters more than polish.`,
-
-  local_business: `
-This is a local business website (restaurant, salon, clinic, shop, etc). Key conversion
-drivers: address and phone number prominently displayed, opening hours, Google Maps embed,
-local social proof (reviews mentioning location), and easy booking or reservation flow.
-Visitors often just want to confirm the business exists and find out how to get there.`,
-
-  blog: `
-This is a blog or content site. Key conversion drivers: email newsletter signup,
-related content discovery, clear author identity, and social sharing. The primary
-conversion goal is building an audience rather than direct sales.`,
-
-  unknown: `
-This appears to be a general business website. Apply universal best practices:
-clear value proposition, contact info, social proof, and a primary CTA.`,
+  service_business: `Service business (agency/consultant). Key: trust signals (testimonials, contact info), clear services. Visitors evaluate trust.`,
+  ecommerce: `Ecommerce. Key: product clarity, trust badges, shipping info, reviews. Visitors evaluate security.`,
+  saas: `SaaS. Key: clear value prop, free trial CTA above fold, pricing transparency. Specificity beats generic claims.`,
+  portfolio: `Portfolio. Key: contact info, case studies, authentic voice, 'hire me' CTA.`,
+  local_business: `Local business (restaurant/clinic/shop). Key: address, phone, hours, Google Maps, local reviews.`,
+  blog: `Blog. Key: email signup, related content, author identity. Goal: audience building.`,
+  unknown: `General business. Apply universal best practices: clear value prop, contact info, social proof, primary CTA.`,
 };
 
 // ─── System prompt ─────────────────────────────────────────────────────────────
-const SYSTEM_PROMPT = `You are a calm, expert website growth consultant helping non-technical business owners understand their website.
-
+const SYSTEM_INSTRUCTION = `You are an elite, highly-paid website growth consultant reviewing a client's site.
 STRICT RULES:
-1. Only explain issues that appear in the findings JSON — never invent new problems
-2. Never use technical jargon. Translate everything:
-   - LCP → "time for your main content to appear"
-   - CLS → "page jumping around while loading"
-   - FCP → "time until visitors see anything"
-   - TTFB → "server response time"
-3. Write as a trusted advisor — warm, specific, non-judgmental, intelligent
-4. Frame ALL insights in terms of business impact (customers, trust, revenue, enquiries)
-5. Generate EXACTLY 3 quick wins — ranked by business impact, not technical severity
-6. Each quick win: title (max 8 words), businessImpact (2–3 sentences), howToFix (specific, tool names where helpful), category, effortLevel
-7. effortLevel: "easy" = under 1hr no-code, "medium" = half day with some help, "involved" = needs a developer
-8. The consultantSummary is the most important paragraph — make it feel like a trusted expert opened your report
-9. Tailor recommendations to the specific industry/page type provided
-10. Output ONLY valid JSON — no markdown, no preamble, no explanation outside JSON
+1. Only explain issues in the findings JSON. NO hallucinations.
+2. NO technical jargon (e.g. translate LCP -> "time for main content to appear").
+3. TONE & CAUTION: Use nuanced, conditional phrasing for missing elements (e.g., "We couldn't clearly identify a primary CTA..." rather than "You have no CTA"). Do not make absolute claims when confidence is low.
+4. COMMUNICATION ANALYSIS: Describe how users psychologically experience the page. If the body word count is low, mention if the offer is clear. If it is a wall of text, point out the cognitive overload.
+5. VALUE PROPOSITION: Explicitly critique the provided H1. Is it a generic buzzword salad? Does it clearly state what they do and who it is for?
+6. TRUST FLOW: Analyze how they sequence trust. Point out friction if they ask for the sale/contact before proving value with social proof.
+7. Explain WHY things matter using psychological hooks (e.g., "Visitors may hesitate when...", "Trust is broken when...").
+8. POSITIVE REINFORCEMENT: Acknowledge at least 1-2 things they are doing right (e.g., "Your site establishes a clean first impression") to build trust and emotional balance.
+9. BLUF SUMMARY: Start the consultantSummary with the single biggest business bottleneck (the "Bottom Line Up Front"). Do not just list issues; tell a strategic story.
+10. Prioritize business impact: trust/contact info > minor technical issues.
+11. Generate EXACTLY 3 quick wins ranked by business impact. effortLevel: "easy", "medium", "involved".
+12. Avoid repetitive phrasing. Use varied sentence structures and avoid starting every tip with "Add" or "Fix".
+13. Output strictly as JSON.`;
 
-OUTPUT SCHEMA (return exactly this structure):
+const JSON_SCHEMA_SKELETON = `
 {
-  "consultantSummary": "string (3–4 sentences, personalised to this specific site and industry)",
-  "overallNarrative": "string (1 punchy headline sentence, max 12 words)",
+  "consultantSummary": "3-4 sentences personalized to site/industry",
+  "overallNarrative": "1 punchy headline sentence, max 12 words",
   "quickWins": [
     {
-      "title": "string (max 8 words)",
-      "businessImpact": "string (2–3 sentences, business-focused)",
-      "howToFix": "string (specific, actionable, mention tools by name)",
+      "title": "max 8 words",
+      "whyItMatters": "2-3 sentences, business-focused psychological explanation",
+      "howToFix": "specific, actionable, mention tools",
       "category": "performance|trust|clarity|conversion",
       "effortLevel": "easy|medium|involved"
     }
@@ -81,20 +51,20 @@ OUTPUT SCHEMA (return exactly this structure):
   "sectionInsights": [
     {
       "dimension": "performance|trust|clarity|conversion",
-      "summary": "string (2–3 sentence consultant paragraph, industry-aware)",
-      "keyFinding": "string (1 sentence — single most important thing)",
-      "positives": ["string (plain English, what is working)"],
-      "improvements": ["string (plain English, what needs work — one per finding)"]
+      "summary": "2-3 sentence consultant paragraph",
+      "keyFinding": "1 sentence, most important takeaway",
+      "positives": ["plain English, what is working"],
+      "improvements": ["plain English, what needs work"]
     }
   ]
-}`;
+}
+`;
 
 // ─── Build the user message ────────────────────────────────────────────────────
 function buildPrompt(
   domain: string,
   scores: AuditScores,
   scraped: ScrapedData,
-  _pageSpeed: PageSpeedData,
   screenshot: ScreenshotData | null,
 ): string {
   const allFindings = [
@@ -106,45 +76,36 @@ function buildPrompt(
 
   const industryCtx = INDUSTRY_CONTEXT[scraped.pageType] ?? INDUSTRY_CONTEXT.unknown;
 
-  // Screenshot visual context
-  const screenshotCtx = screenshot?.captureSuccess
-    ? `Visual analysis from screenshot:
-- CTA visible above fold (desktop): ${screenshot.ctaAboveFold ?? "unknown"}
-- CTA visible above fold (mobile): ${screenshot.ctaAboveFoldMobile ?? "unknown"}
-- CTA button text detected: "${screenshot.ctaText ?? "none detected"}"
-- Hero image present: ${screenshot.hasHeroImage ?? "unknown"}
-- Navigation height: ${screenshot.navHeight ?? "unknown"}px`
-    : "Screenshot capture was not available for this audit.";
+  // Minimal token usage for screenshot context
+  let screenshotCtx = "Screenshot: N/A";
+  if (screenshot?.captureSuccess) {
+    screenshotCtx = `CTA above fold: Desktop=${screenshot.ctaAboveFold}, Mobile=${screenshot.ctaAboveFoldMobile}. CTA Text: "${screenshot.ctaText}". Hero Image: ${screenshot.hasHeroImage}.`;
+  }
+
+  // Compress findings payload to save tokens
+  const findingsPayload = allFindings.map(f => `${f.category}|${f.severity}|${f.check}${f.detail ? `|${f.detail}` : ''}`).join('\\n');
 
   return `Analyse this website and generate a consultant-style growth report.
 
 WEBSITE: ${domain}
-PAGE TYPE: ${scraped.pageType}
-INDUSTRY CONTEXT: ${industryCtx}
+INDUSTRY: ${scraped.pageType}. ${industryCtx}
+SCORES (0-100): Overall ${scores.overall}, Perf ${scores.performance.score}, Trust ${scores.trust.score}, Clarity ${scores.clarity.score}, Conv ${scores.conversion.score}
 
-SCORES:
-- Overall growth score: ${scores.overall}/100
-- Performance: ${scores.performance.score}/100
-- Trust: ${scores.trust.score}/100
-- Clarity: ${scores.clarity.score}/100
-- Conversion: ${scores.conversion.score}/100
+FINDINGS (category|severity|check|detail):
+${findingsPayload}
 
-REAL FINDINGS (only explain these — do not invent others):
-${JSON.stringify(allFindings, null, 2)}
-
-SITE CONTEXT:
-- H1 headline: "${scraped.h1s[0] ?? "none found"}"
-- Meta description: "${scraped.metaDescription ?? "missing"}"
-- CTA button texts: ${JSON.stringify(scraped.ctaTexts.slice(0, 3))}
-- Nav links: ${JSON.stringify(scraped.navLinks.slice(0, 6))}
-- Has testimonials: ${scraped.hasTestimonials}
-- Has pricing: ${scraped.hasPricing}
-- Has contact form: ${scraped.hasContactForm} (${scraped.formFieldCount} fields)
-- Has phone: ${scraped.hasPhone} (${scraped.phoneNumber ?? "none"})
-
+CONTEXT:
+H1: "${scraped.h1s[0] ?? "none"}"
+Meta: "${scraped.metaDescription ?? "none"}"
+Word Count: ${scraped.bodyWordCount} words
+CTAs: ${scraped.ctaTexts.slice(0, 2).join(", ")}
+Nav: ${scraped.navLinks.slice(0, 4).join(", ")}
+Forms/Contact: Phone=${scraped.hasPhone}, Form=${scraped.hasContactForm}(${scraped.formFieldCount} fields)
+Elements: Pricing=${scraped.hasPricing}, Testimonials=${scraped.hasTestimonials}
 ${screenshotCtx}
 
-Generate the JSON report now. Personalise to the ${scraped.pageType} industry context. Be the trusted advisor.`;
+Return JSON matching exactly this skeleton:
+${JSON_SCHEMA_SKELETON}`;
 }
 
 // ─── Main export ──────────────────────────────────────────────────────────────
@@ -156,29 +117,27 @@ export async function generateAIReport(
   screenshot:  ScreenshotData | null = null,
 ): Promise<AIReport> {
   try {
-    const response = await client.messages.create({
-      model:      "claude-haiku-4-5",
-      max_tokens: 2200,
-      system:     SYSTEM_PROMPT,
-      messages:   [{ role: "user", content: buildPrompt(domain, scores, scraped, pageSpeed, screenshot) }],
+    if (!process.env.GEMINI_API_KEY) {
+      console.warn("GEMINI_API_KEY missing, using fallback report.");
+      return fallbackAIReport(domain, scores, scraped.pageType);
+    }
+
+    const prompt = buildPrompt(domain, scores, scraped, screenshot);
+    
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: prompt,
+      config: {
+        systemInstruction: SYSTEM_INSTRUCTION,
+        responseMimeType: "application/json",
+        temperature: 0.7,
+      }
     });
 
-    const rawText = response.content
-      .filter(b => b.type === "text")
-      .map(b => (b as { type: "text"; text: string }).text)
-      .join("");
+    const rawText = response.text;
+    if (!rawText) throw new Error("Empty response from Gemini");
 
-    const cleaned = rawText
-      .replace(/^```(?:json)?\s*/m, "")
-      .replace(/\s*```\s*$/m, "")
-      .trim();
-
-    const parsed = JSON.parse(cleaned) as {
-      consultantSummary: string;
-      overallNarrative:  string;
-      quickWins:         QuickWin[];
-      sectionInsights:   SectionInsight[];
-    };
+    const parsed = JSON.parse(rawText);
 
     if (!parsed.consultantSummary || !Array.isArray(parsed.quickWins)) {
       throw new Error("Invalid AI response structure");
@@ -206,44 +165,44 @@ function fallbackAIReport(domain: string, scores: AuditScores, pageType: PageTyp
   const industryTips: Record<PageType, QuickWin> = {
     service_business: {
       title: "Add client testimonials with specific results",
-      businessImpact: "Service businesses live or die by social proof. Visitors need to see that others have trusted you before they will. A single specific testimonial ('Increased our bookings by 40%') is worth more than five generic ones.",
-      howToFix: "Add 2–3 testimonials to your homepage, ideally with the client's name, company, and a specific result they achieved. Place them near your main CTA button.",
+      whyItMatters: "Service businesses live or die by social proof. Visitors naturally hesitate to commit time or money without seeing that others have successfully trusted you first. A single specific testimonial is often worth more than five generic ones.",
+      howToFix: "Place 2–3 testimonials directly on your homepage, ideally with the client's name, company, and a specific result they achieved. Position them immediately near your main CTA button.",
       category: "trust", effortLevel: "easy",
     },
     ecommerce: {
       title: "Add trust badges near your purchase CTA",
-      businessImpact: "Shoppers abandon carts when they don't feel safe entering payment details. Visible security badges and a clear returns policy can recover a significant portion of lost sales.",
-      howToFix: "Add SSL badge, accepted payment icons, and a one-line returns policy near your Add to Cart button. These take under an hour to add and have immediate impact.",
+      whyItMatters: "Shoppers frequently abandon their carts when they don't feel entirely safe entering payment details. Visible security badges and a clear returns policy provide the psychological safety needed to complete a purchase.",
+      howToFix: "Integrate an SSL badge, accepted payment icons, and a one-line returns policy just below your Add to Cart button.",
       category: "trust", effortLevel: "easy",
     },
     saas: {
-      title: "Put your free trial CTA above the fold",
-      businessImpact: "SaaS visitors decide in seconds whether to try your product. If they have to scroll to find the signup button, most won't bother. Positioning the CTA in the hero section is the single highest-leverage change.",
-      howToFix: "Move your primary CTA ('Start free trial' or 'Get started free') into the hero section headline area. It should be the first interactive element a visitor can click.",
+      title: "Position your free trial CTA above the fold",
+      whyItMatters: "SaaS visitors decide in seconds whether to evaluate your product. If they have to scroll to find the signup button, you risk losing their momentum. Visibility of the next step is crucial for software conversions.",
+      howToFix: "Move your primary CTA ('Start free trial' or 'Get started free') into the hero section headline area so it is the very first interactive element they see.",
       category: "conversion", effortLevel: "easy",
     },
     portfolio: {
-      title: "Make your contact info impossible to miss",
-      businessImpact: "Portfolio visitors who want to hire you need to reach you with minimal friction. A buried contact page loses you work — add your email or a 'Hire me' link directly in your navigation.",
-      howToFix: "Add your email address or a 'Work with me' button to your nav bar. Also add it to your footer. Repeat it after your best case study.",
+      title: "Make your contact information immediately visible",
+      whyItMatters: "Prospective clients who want to hire you need a frictionless way to reach out. A buried contact page creates unnecessary hurdles—making yourself accessible builds immediate professional trust.",
+      howToFix: "Include your email address or a prominent 'Work with me' button directly in your navigation bar and footer. Repeat this call-to-action after your strongest case study.",
       category: "conversion", effortLevel: "easy",
     },
     local_business: {
       title: "Display your phone number in the header",
-      businessImpact: "Local customers often just want to call. If your phone number requires hunting, they'll call your competitor instead. Header placement means they can reach you from any page without scrolling.",
-      howToFix: "Add your phone number as a clickable tel: link in your navigation header. On mobile this lets users call with one tap — critical for local businesses.",
+      whyItMatters: "Local customers often arrive with high intent, simply wanting to call or find your address. If your phone number requires hunting, they may switch to a competitor who makes it easier.",
+      howToFix: "Format your phone number as a clickable tel: link in your navigation header, allowing mobile users to call you with a single tap.",
       category: "trust", effortLevel: "easy",
     },
     blog: {
-      title: "Add an email capture to every article",
-      businessImpact: "Blog traffic is largely anonymous and one-time. An email capture converts readers into subscribers you can reach again — it's the highest-value action a content site can optimise for.",
-      howToFix: "Add a simple email signup box at the end of each post with a specific incentive ('Get the next post in your inbox'). Use ConvertKit or Mailchimp's free tier.",
+      title: "Include an email capture on every article",
+      whyItMatters: "Blog traffic is largely anonymous and transient. Capturing an email address allows you to convert one-time readers into a loyal audience, which is the foundation of media growth.",
+      howToFix: "Place a simple email signup box at the end of each post offering a specific incentive, using a free tier tool like ConvertKit or Mailchimp.",
       category: "conversion", effortLevel: "easy",
     },
     unknown: {
       title: "Add a visible phone number and email address",
-      businessImpact: "Visitors who can't immediately see how to contact you will leave. Basic contact information — phone, email, or a contact form — is the foundation of website trust.",
-      howToFix: "Add your phone number and email address to your header area and footer. Make the phone number a clickable link (tel:) so mobile users can call with one tap.",
+      whyItMatters: "Visitors who cannot easily find a way to contact you will quickly lose trust. Accessible contact information is the most fundamental indicator that a legitimate business stands behind the website.",
+      howToFix: "Place your phone number and email address in your header and footer. Make the phone number a clickable link (tel:) so mobile users can dial effortlessly.",
       category: "trust", effortLevel: "easy",
     },
   };
@@ -255,14 +214,14 @@ function fallbackAIReport(domain: string, scores: AuditScores, pageType: PageTyp
       industryTips[pageType] ?? industryTips.unknown,
       {
         title: "Sharpen your main call-to-action text",
-        businessImpact: "Generic CTA buttons like 'Get in touch' or 'Contact us' lose momentum. Buttons that describe the outcome — 'Book a free call', 'Get your quote', 'Start your free trial' — convert significantly better because they set clear expectations.",
-        howToFix: "Change your main button text to describe exactly what happens next. Think about what the visitor receives, not what they have to do.",
+        whyItMatters: "Generic CTA buttons like 'Get in touch' or 'Contact us' fail to build momentum. Buttons that describe the exact outcome—like 'Book a free call'—convert significantly better because they set clear psychological expectations.",
+        howToFix: "Rewrite your main button text to describe exactly what the visitor receives, focusing on the value rather than the action they have to take.",
         category: "conversion", effortLevel: "easy",
       },
       {
-        title: "Compress your hero image for faster mobile load",
-        businessImpact: "Over 60% of web traffic arrives on mobile. A slow-loading hero image means visitors see a blank page and leave before seeing your offer — directly reducing enquiries.",
-        howToFix: "Run your hero image through Squoosh.app (free). Export as WebP at 80% quality. This typically cuts file size by 60–70% with no visible quality loss.",
+        title: "Compress your hero image for faster loading",
+        whyItMatters: "With over 60% of web traffic on mobile devices, a slow-loading hero image leaves visitors staring at a blank screen. This friction causes many to abandon the site before they even see your primary offer.",
+        howToFix: "Run your hero image through Squoosh.app and export as WebP at 80% quality. This typically reduces file size significantly with no visible loss in fidelity.",
         category: "performance", effortLevel: "easy",
       },
     ],

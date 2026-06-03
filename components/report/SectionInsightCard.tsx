@@ -156,13 +156,20 @@ export default function SectionInsightCard({
       {/* Locked overlay */}
       {locked && (
         <div
-          className="border-t border-surface-100 px-5 sm:px-6 py-4 flex items-center justify-between cursor-pointer hover:bg-surface-50 transition-colors"
+          className="border-t border-surface-100 px-5 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer hover:bg-surface-50 transition-colors group"
           onClick={onUnlock}
         >
-          <p className="text-sm text-surface-400">
-            Unlock full analysis — issues, fixes, and AI insights
-          </p>
-          <span className="text-xs font-medium text-brand-600 shrink-0">Unlock →</span>
+          <div className="flex items-center gap-2">
+            <span className="text-sm" aria-hidden="true">🔒</span>
+            <p className="text-sm font-medium text-surface-800">
+              {issues.length > 0 
+                ? `${issues.length} high-impact ${dimension} ${issues.length === 1 ? 'blocker' : 'blockers'} found`
+                : `Hidden ${dimension} insights and AI analysis`}
+            </p>
+          </div>
+          <span className="text-xs font-semibold text-brand-600 group-hover:text-brand-700 transition-colors shrink-0">
+            Unlock to view →
+          </span>
         </div>
       )}
     </div>

@@ -35,7 +35,7 @@ export default function TermsPage() {
           </section>
           <section>
             <h2 className="text-base font-semibold text-surface-900 mb-2">Contact</h2>
-            <p>Questions? <a href="mailto:hello@sitecheck.ai" className="text-brand-600 hover:underline">hello@sitecheck.ai</a></p>
+            <p>Questions? <a href="mailto:support@sitecheck.ai" className="text-brand-600 hover:underline">support@sitecheck.ai</a></p>
           </section>
         </div>
 

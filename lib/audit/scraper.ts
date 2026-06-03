@@ -11,6 +11,8 @@ const CTA_SELECTORS = [
   "a[href*='demo']", "a[href*='trial']", "button[type='submit']",
   ".cta", "#cta", "[class*='cta']", "[id*='cta']",
   "a.btn", "a.button", "button.btn", ".btn-primary", ".button-primary",
+  "[role='button']", "a[class*='bg-']", "button[class*='bg-']",
+  "[data-testid*='cta']", "[data-cy*='cta']"
 ];
 const SOCIAL_DOMAINS = [
   "twitter.com", "x.com", "linkedin.com", "facebook.com",
@@ -50,9 +52,11 @@ export async function scrapeUrl(url: string): Promise<ScrapedData> {
   const h2s = $("h2").map((_, el) => $(el).text().trim()).get().filter(Boolean).slice(0, 10);
   const h3s = $("h3").map((_, el) => $(el).text().trim()).get().filter(Boolean).slice(0, 10);
 
-  // ── Meta ──────────────────────────────────────────────────────────────────
+  // ── Meta & Content Density ──────────────────────────────────────────────────
   const title          = $("title").first().text().trim() || null;
   const metaDescription = $('meta[name="description"]').attr("content")?.trim() || null;
+  const hasViewport    = $('meta[name="viewport"]').length > 0;
+  const bodyWordCount  = bodyText.split(/\s+/).filter(w => w.length > 0).length;
 
   // ── Contact info ──────────────────────────────────────────────────────────
   const phoneMatches  = bodyText.match(PHONE_REGEX) || [];
@@ -85,12 +89,26 @@ export async function scrapeUrl(url: string): Promise<ScrapedData> {
 
   // ── CTAs ──────────────────────────────────────────────────────────────────
   const ctaElements = new Set<string>();
+  
+  // 1. Selector-based
   CTA_SELECTORS.forEach(sel => {
     $(sel).each((_, el) => {
       const text = $(el).text().trim();
       if (text && text.length < 60) ctaElements.add(text);
     });
   });
+
+  // 2. Semantic text fallback (scan first 50 links/buttons)
+  if (ctaElements.size === 0) {
+    const HIGH_INTENT_VERBS = ["get started", "buy", "subscribe", "book", "contact", "sign up", "try", "join", "add to cart", "purchase"];
+    $("a, button").slice(0, 50).each((_, el) => {
+      const text = $(el).text().trim().toLowerCase();
+      if (text && text.length < 40 && HIGH_INTENT_VERBS.some(v => text.includes(v))) {
+        ctaElements.add($(el).text().trim());
+      }
+    });
+  }
+
   const ctaTexts = Array.from(ctaElements).slice(0, 8);
   const ctaCount = ctaTexts.length;
 
@@ -135,6 +153,8 @@ export async function scrapeUrl(url: string): Promise<ScrapedData> {
   // ── Trust badges ─────────────────────────────────────────────────────────
   const hasTrustBadges =
     $("[class*='badge'], [class*='trust'], [class*='certif'], [class*='award']").length > 0 ||
+    $("img[src*='stripe'], img[src*='paypal'], img[src*='norton'], img[src*='mcafee']").length > 0 ||
+    $("img[alt*='secure'], img[alt*='guarantee'], img[alt*='trust']").length > 0 ||
     bodyText.toLowerCase().includes("certified") ||
     bodyText.toLowerCase().includes("accredited");
 
@@ -145,7 +165,7 @@ export async function scrapeUrl(url: string): Promise<ScrapedData> {
   const hasFooter = $("footer").length > 0;
 
   // ── Navigation ───────────────────────────────────────────────────────────
-  const navLinks = $("nav a, header a")
+  const navLinks = $("nav a, header a, [role='navigation'] a, .menu a")
     .map((_, el) => $(el).text().trim())
     .get()
     .filter(t => t.length > 0 && t.length < 30)
@@ -164,7 +184,7 @@ export async function scrapeUrl(url: string): Promise<ScrapedData> {
     ctaTexts, ctaCount, hasTestimonials, hasAboutPage, aboutInNav,
     hasPrivacyPolicy, hasContactForm, formFieldCount, hasPricing,
     hasTrustBadges, imageCount, hasFooter, navLinks,
-    internalLinks, pageType,
+    internalLinks, hasViewport, bodyWordCount, pageType,
   };
 }
 

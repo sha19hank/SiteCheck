@@ -210,4 +210,4 @@ Audits for the same domain within 24 hours return the cached result, saving Page
 
 ## Support
 
-Questions? hello@sitecheck.ai
+Questions? support@sitecheck.ai

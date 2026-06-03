@@ -134,7 +134,7 @@ export async function sendPaidReportEmail(
     <div class="win-card">
       <div class="win-num">${i + 1}</div>
       <div class="win-title">${win.title}</div>
-      <p style="font-size:13px; color:#4a5668; margin:0 0 4px;">${win.businessImpact}</p>
+      <p style="font-size:13px; color:#4a5668; margin:0 0 4px;">${win.whyItMatters}</p>
       <div class="win-fix"><strong>Fix:</strong> ${win.howToFix}</div>
     </div>
   `).join("");

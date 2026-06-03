@@ -226,7 +226,7 @@ function ReportContent() {
           </div>
         </div>
 
-        <main className="max-w-3xl mx-auto px-4 sm:px-6 pt-7 space-y-5">
+        <main className="max-w-3xl mx-auto px-4 sm:px-6 pt-8 sm:pt-10 space-y-8 sm:space-y-10">
 
           {/* ── Comparison banner ─────────────────────────────────────────── */}
           {auditId && (
@@ -324,20 +324,30 @@ function ReportContent() {
 
           {/* ── Unlock CTA ────────────────────────────────────────────────── */}
           {!isPaid && (
-            <div className="animate-fade-up fill-both delay-400 card p-6 border-brand-200 bg-gradient-to-br from-brand-50 via-white to-white">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-brand-gradient flex items-center justify-center shrink-0">
-                  <svg viewBox="0 0 20 20" fill="white" className="w-5 h-5">
-                    <path fillRule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clipRule="evenodd"/>
+            <div className="animate-fade-up fill-both delay-400 card p-8 sm:p-10 border-brand-200 bg-gradient-to-br from-brand-50/50 via-white to-white text-center sm:text-left relative overflow-hidden mt-4">
+              <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
+                <svg viewBox="0 0 24 24" fill="currentColor" className="w-48 h-48 text-brand-900">
+                  <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+                </svg>
+              </div>
+              <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 relative z-10">
+                <div className="w-14 h-14 rounded-2xl bg-brand-gradient flex items-center justify-center shrink-0 shadow-lg shadow-brand-500/20">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="white" className="w-7 h-7">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                   </svg>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-surface-900 mb-0.5">Unlock your complete growth report</p>
-                  <p className="text-sm text-surface-500">All 4 sections · Top 3 Quick Wins · PDF export · One-time ₹{process.env.NEXT_PUBLIC_REPORT_PRICE_INR ?? "499"}</p>
+                  <h3 className="text-xl font-bold text-surface-900 mb-2">Stop guessing. Start growing.</h3>
+                  <p className="text-sm text-surface-600 mb-5 leading-relaxed max-w-lg mx-auto sm:mx-0">
+                    Unlock your complete growth report to see the exact, prioritized changes needed to fix your conversion blockers and capture lost revenue.
+                  </p>
+                  <div className="flex flex-col sm:flex-row items-center gap-4">
+                    <button onClick={() => setShowPayment(true)} className="btn-primary px-8 h-12 w-full sm:w-auto shadow-xl shadow-brand-500/20">
+                      Unlock full strategy — ₹{process.env.NEXT_PUBLIC_REPORT_PRICE_INR ?? "499"}
+                    </button>
+                    <p className="text-xs text-surface-400 font-medium">One-time investment • Lifetime access</p>
+                  </div>
                 </div>
-                <button onClick={() => setShowPayment(true)} className="btn-primary shrink-0">
-                  Unlock full report
-                </button>
               </div>
             </div>
           )}

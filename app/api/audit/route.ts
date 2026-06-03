@@ -26,63 +26,78 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Private URLs cannot be audited" }, { status: 400 });
     }
 
-    const supabase = await createServiceClient();
+    let supabase: Awaited<ReturnType<typeof createServiceClient>> | null = null;
+    try {
+      if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        supabase = await createServiceClient();
+      }
+    } catch (e) {
+      console.warn("Supabase client init failed, running in memory-only mode");
+    }
 
     // Cache check
-    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-    const { data: cached } = await supabase
-      .from("audits")
-      .select("*")
-      .eq("domain", domain)
-      .gte("created_at", oneDayAgo)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
+    if (supabase) {
+      try {
+        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        const { data: cached } = await supabase
+          .from("audits")
+          .select("*")
+          .eq("domain", domain)
+          .gte("created_at", oneDayAgo)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
 
-    if (cached) {
-      const report = buildPartialReportFromRow(cached);
-      return NextResponse.json({
-        auditId: cached.id,
-        shareToken: cached.share_token,
-        partialReport: report,
-        cached: true,
-      });
+        if (cached) {
+          const report = buildPartialReportFromRow(cached);
+          return NextResponse.json({
+            auditId: cached.id,
+            shareToken: cached.share_token,
+            partialReport: report,
+            cached: true,
+          });
+        }
+      } catch (cacheErr) {
+        console.warn("Cache check failed, proceeding with fresh audit");
+      }
     }
 
     // Run audit
     const record = await runAudit({ url });
 
-    // Email capture
-    if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      try {
-        await supabase.from("email_leads").upsert(
-          { email, audit_id: record.id, source: "free_report_gate" },
-          { onConflict: "email" }
-        );
-      } catch { /* non-fatal */ }
-    }
-
     // Persist
-    const { error: insertError } = await supabase.from("audits").insert({
-      id:                record.id,
-      url:               record.url,
-      domain:            record.domain,
-      share_token:       record.shareToken,
-      is_public:         true,
-      score_overall:     record.scores.overall,
-      score_performance: record.scores.performance.score,
-      score_trust:       record.scores.trust.score,
-      score_clarity:     record.scores.clarity.score,
-      score_conversion:  record.scores.conversion.score,
-      scores:            record.scores,
-      scraped_data:      record.scrapedData,
-      pagespeed_data:    record.pageSpeedData,
-      ai_report:         record.aiReport,
-      screenshot_data:   record.screenshotData,
-      is_paid:           false,
-    });
+    if (supabase) {
+      // Email capture
+      if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        try {
+          await supabase.from("email_leads").upsert(
+            { email, audit_id: record.id, source: "free_report_gate" },
+            { onConflict: "email" }
+          );
+        } catch { /* non-fatal */ }
+      }
 
-    if (insertError) console.error("DB insert error:", insertError);
+      const { error: insertError } = await supabase.from("audits").insert({
+        id:                record.id,
+        url:               record.url,
+        domain:            record.domain,
+        share_token:       record.shareToken,
+        is_public:         true,
+        score_overall:     record.scores.overall,
+        score_performance: record.scores.performance.score,
+        score_trust:       record.scores.trust.score,
+        score_clarity:     record.scores.clarity.score,
+        score_conversion:  record.scores.conversion.score,
+        scores:            record.scores,
+        scraped_data:      record.scrapedData,
+        pagespeed_data:    record.pageSpeedData,
+        ai_report:         record.aiReport,
+        screenshot_data:   record.screenshotData,
+        is_paid:           false,
+      });
+
+      if (insertError) console.error("DB insert error:", insertError);
+    }
 
     return NextResponse.json({
       auditId:       record.id,
