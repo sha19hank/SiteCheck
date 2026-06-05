@@ -63,7 +63,14 @@ export default function SectionInsightCard({
       {/* Header — always visible */}
       <button
         className="w-full flex items-center justify-between p-5 sm:p-6 text-left hover:bg-surface-50 transition-colors duration-150"
-        onClick={() => locked ? onUnlock?.() : setExpanded(!expanded)}
+        onClick={() => {
+          if (locked) {
+            onUnlock?.();
+          } else {
+            console.log(`[Accordion] Toggled dimension: ${dimension}, new state: ${!expanded}`);
+            setExpanded(!expanded);
+          }
+        }}
         aria-expanded={locked ? false : expanded}
       >
         <div className="flex items-center gap-3">
@@ -103,10 +110,12 @@ export default function SectionInsightCard({
       </button>
 
       {/* Body */}
-      {!locked && expanded && insight && (
+      {!locked && expanded && (
         <div className="border-t border-surface-100 p-5 sm:p-6 space-y-5">
           {/* Summary */}
-          <p className="text-sm text-surface-600 leading-relaxed">{insight.summary}</p>
+          {insight?.summary && (
+            <p className="text-sm text-surface-600 leading-relaxed">{insight.summary}</p>
+          )}
 
           {/* Issues */}
           {issues.length > 0 && (
@@ -120,7 +129,7 @@ export default function SectionInsightCard({
                     <div className={cn("w-2 h-2 rounded-full shrink-0 mt-1.5", SEVERITY_DOT[f.severity])} />
                     <div className="flex-1">
                       <p className="text-sm text-surface-700">
-                        {insight.improvements[i] ?? f.check.replace(/_/g, " ")}
+                        {insight?.improvements?.[i] ?? f.check.replace(/_/g, " ")}
                       </p>
                       {f.detail && (
                         <p className="text-xs text-surface-400 mt-0.5 font-mono">{f.detail}</p>
@@ -143,7 +152,7 @@ export default function SectionInsightCard({
                   <div key={i} className="flex items-start gap-3">
                     <div className="w-2 h-2 rounded-full shrink-0 mt-1.5 bg-emerald-500" />
                     <p className="text-sm text-surface-600">
-                      {insight.positives[i] ?? f.check.replace(/_/g, " ")}
+                      {insight?.positives?.[i] ?? f.check.replace(/_/g, " ")}
                     </p>
                   </div>
                 ))}

@@ -139,6 +139,67 @@ export interface AIReport {
   generatedAt: string;           // ISO timestamp
 }
 
+// ─── Classification (Phase 1) ───────────────────────────────────────────────────
+
+export type WebsiteType =
+  | "saas"
+  | "ecommerce"
+  | "agency"
+  | "creator"
+  | "blog"
+  | "local_business"
+  | "marketplace"
+  | "nonprofit"
+  | "community"
+  | "portfolio"
+  | "other"
+  | "unknown";
+
+export type CategoryScores = Record<WebsiteType, number>;
+
+export interface WebsiteClassification {
+  websiteType: WebsiteType;
+  confidence: number;
+  categoryScores: CategoryScores;
+  reasoning: string[];
+}
+
+export interface CategoryFinding {
+  id: string;
+  title: string;
+  description: string;
+  severity: "critical" | "high" | "medium" | "low" | "pass";
+  category: "trust" | "conversion" | "clarity" | "performance" | string;
+  priority: number; // 1-100
+  evidence: string[];
+  source: string;
+}
+
+export interface CategoryRecommendation {
+  title: string;
+  why_it_matters: string;
+  how_to_fix: string;
+  impact: "high" | "medium" | "low";
+  effort: "low" | "medium" | "high";
+}
+
+export interface CategoryAudit {
+  websiteType: WebsiteType;
+  overallScore: number;
+  categoryScores: {
+    trust: number;
+    conversion: number;
+    clarity: number;
+    performance: number;
+  };
+  findings: CategoryFinding[];
+  recommendations: CategoryRecommendation[];
+  strengths: string[];
+  weaknesses: string[];
+  healthGrade: string; // A+, A, B, C, D, F
+  auditSignals: Record<string, any>;
+}
+
 // ─── Full audit record ────────────────────────────────────────────────────────
 
 export interface AuditRecord {
@@ -152,6 +213,8 @@ export interface AuditRecord {
   scrapedData: ScrapedData;
   pageSpeedData: PageSpeedData;
   aiReport: AIReport;
+  classification: WebsiteClassification | null;
+  categoryAudit: CategoryAudit | null;
   screenshotData: ScreenshotData | null;
   isPaid: boolean;
   paymentId: string | null;

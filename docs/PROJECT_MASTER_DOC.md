@@ -72,6 +72,17 @@ Hosted on Supabase (PostgreSQL).
 *   **`email_leads`**: Captures emails submitted on the home page for marketing drips.
 
 ## 10. Authentication Flow
+
+*   **Provider**: Supabase Auth (Magic Links).
+*   **Trigger**: `signInWithOtp()` is called in `app/login/page.tsx`.
+*   **Callback**: Handled via Server Action / API Route (`app/auth/callback/route.ts`). Next.js exchanges the URL code for a secure session and redirects to `/dashboard`.
+*   **Database Trigger (`on_auth_user_created`)**: When a user is successfully created in `auth.users`, a Postgres trigger fires to automatically insert a corresponding row into `public.user_profiles`.
+
+### 10.1 Discovered Issues & Fixes
+*   **Missing `search_path` Vulnerability (Fixed)**: 
+    *   **Symptom**: `signInWithOtp()` failed with "Database error saving new user".
+    *   **Root Cause**: Supabase Auth (GoTrue) executes user creation transactions with a heavily restricted `search_path` that excludes `public`. The custom trigger function `handle_new_user()` originally lacked an explicit `search_path` and used an unqualified table name (`insert into user_profiles`). PostgREST failed to find the table, crashing the transaction.
+    *   **Fix Applied**: The function was redefined to explicitly `set search_path = public` and schema-qualify `public.user_profiles` according to Supabase security best practices.
 *   Supabase Magic Links (passwordless authentication).
 *   Next.js Middleware (`middleware.ts`) protects routes like `/dashboard` and manages session tokens.
 *   Callback handled at `/auth/callback`.

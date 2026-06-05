@@ -27,10 +27,18 @@ export async function POST(req: NextRequest) {
     }
 
     let supabase: Awaited<ReturnType<typeof createServiceClient>> | null = null;
+    let userId: string | null = null;
+
     try {
       if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
         supabase = await createServiceClient();
       }
+      
+      // Fetch authenticated user context for linking the audit
+      const { createClient } = await import("@/lib/supabase/server");
+      const userClient = await createClient();
+      const { data: { session } } = await userClient.auth.getSession();
+      userId = session?.user?.id || null;
     } catch (e) {
       console.warn("Supabase client init failed, running in memory-only mode");
     }
@@ -63,7 +71,9 @@ export async function POST(req: NextRequest) {
     }
 
     // Run audit
+    console.error(">>> [DEBUG] Starting runAudit for:", url);
     const record = await runAudit({ url });
+    console.error(">>> [DEBUG] Generated audit token:", record.shareToken);
 
     // Persist
     if (supabase) {
@@ -77,27 +87,75 @@ export async function POST(req: NextRequest) {
         } catch { /* non-fatal */ }
       }
 
-      const { error: insertError } = await supabase.from("audits").insert({
-        id:                record.id,
-        url:               record.url,
-        domain:            record.domain,
-        share_token:       record.shareToken,
-        is_public:         true,
-        score_overall:     record.scores.overall,
-        score_performance: record.scores.performance.score,
-        score_trust:       record.scores.trust.score,
-        score_clarity:     record.scores.clarity.score,
-        score_conversion:  record.scores.conversion.score,
-        scores:            record.scores,
-        scraped_data:      record.scrapedData,
-        pagespeed_data:    record.pageSpeedData,
-        ai_report:         record.aiReport,
-        screenshot_data:   record.screenshotData,
-        is_paid:           false,
-      });
+      console.error(">>> [DEBUG] Attempting Supabase insert for audit:", record.id);
+      
+      // --- Temporary Schema Validation ---
+      const { data: schemaCheckData, error: schemaCheckError } = await supabase.from('audits').select('*').limit(1);
+      if (!schemaCheckError) {
+        const availableColumns = schemaCheckData && schemaCheckData.length > 0 
+            ? Object.keys(schemaCheckData[0]) 
+            : [];
+        const expectedColumns = [
+          'id', 'user_id', 'url', 'domain', 'share_token', 'is_public', 
+          'score_overall', 'score_performance', 'score_trust', 'score_clarity', 'score_conversion', 
+          'scores', 'scraped_data', 'pagespeed_data', 'ai_report', 'is_paid', 'payment_id', 
+          'created_at', 'website_type', 'classification_confidence', 'classification_scores', 
+          'classification_reasoning', 'category_audit'
+        ];
+        if (availableColumns.length > 0) {
+          const missingColumns = expectedColumns.filter(c => !availableColumns.includes(c));
+          if (missingColumns.length > 0) {
+            console.warn(`⚠️ [SCHEMA WARNING] The following expected columns are missing in the Supabase schema cache: ${missingColumns.join(', ')}`);
+            console.warn(`If you recently ran a migration, execute: NOTIFY pgrst, 'reload schema' in the SQL editor.`);
+          }
+        }
+      } else {
+        console.warn(`⚠️ [SCHEMA WARNING] Could not verify schema: ${schemaCheckError.message}`);
+      }
+      // -----------------------------------
+      
+      const insertPayload = {
+        id:                        record.id,
+        user_id:                   userId,
+        url:                       record.url,
+        domain:                    record.domain,
+        share_token:               record.shareToken,
+        is_public:                 true,
+        score_overall:             record.scores.overall,
+        score_performance:         record.scores.performance.score,
+        score_trust:               record.scores.trust.score,
+        score_clarity:             record.scores.clarity.score,
+        score_conversion:          record.scores.conversion.score,
+        scores:                    record.scores,
+        scraped_data:              record.scrapedData,
+        pagespeed_data:            record.pageSpeedData,
+        ai_report:                 record.aiReport,
+        website_type:              record.classification?.websiteType ?? "unknown",
+        classification_confidence: record.classification?.confidence ?? 0,
+        classification_scores:     record.classification?.categoryScores ?? null,
+        classification_reasoning:  record.classification?.reasoning ?? null,
+        category_audit:            record.categoryAudit ?? null,
+        is_paid:                   false,
+        // screenshot_data is commented out because it does not exist in the initial schema.
+        // screenshot_data: record.screenshotData,
+      };
 
-      if (insertError) console.error("DB insert error:", insertError);
+      console.error(">>> [DEBUG] Insert Payload Keys:", Object.keys(insertPayload));
+
+      const { data: insertData, error: insertError } = await supabase
+        .from("audits")
+        .insert(insertPayload)
+        .select();
+
+      console.error(">>> [DEBUG] Supabase Insert Result Data:", insertData);
+      console.error(">>> [DEBUG] Supabase Insert Error:", insertError);
+
+      if (insertError) {
+        throw new Error(`DB Insert Failed: ${insertError.message}`);
+      }
     }
+
+    console.error(">>> [DEBUG] Returning success to client with token:", record.shareToken);
 
     return NextResponse.json({
       auditId:       record.id,

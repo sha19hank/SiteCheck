@@ -2,6 +2,7 @@ import { scrapeUrl }        from "./scraper";
 import { fetchPageSpeed }   from "./pagespeed";
 import { calculateScores }  from "./scorer";
 import { generateAIReport } from "./ai-report";
+import { classifyWebsite }  from "./classifier";
 import { generateShareToken, extractDomain } from "@/lib/utils";
 import type { AuditRecord, AuditRequest, ScreenshotData } from "@/types";
 
@@ -15,6 +16,13 @@ export async function runAudit(request: AuditRequest): Promise<AuditRecord> {
     fetchPageSpeed(url),
     scrapeUrl(url),
   ]);
+
+  // ── Phase 1: Classification ───────────────────────────────────────────────
+  const classification = classifyWebsite(scrapedData);
+
+  // ── Phase 2: Category Audit ───────────────────────────────────────────────
+  const { runCategoryAudit } = await import("./category-audits");
+  const categoryAudit = runCategoryAudit(classification.websiteType, scrapedData);
 
   // ── Screenshots (optional, non-blocking) ──────────────────────────────────
   // Only attempt if ENABLE_SCREENSHOTS env var is set to avoid cold-start cost
@@ -47,6 +55,8 @@ export async function runAudit(request: AuditRequest): Promise<AuditRecord> {
     scrapedData,
     pageSpeedData,
     aiReport,
+    classification,
+    categoryAudit,
     screenshotData,
     isPaid:         false,
     paymentId:      null,

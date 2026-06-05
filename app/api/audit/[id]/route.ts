@@ -9,11 +9,16 @@ export async function GET(
   const { id } = await params;
   const supabase = await createServiceClient();
 
-  const { data, error } = await supabase
-    .from("audits")
-    .select("*")
-    .or(`id.eq.${id},share_token.eq.${id}`)
-    .single();
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
+
+  let query = supabase.from("audits").select("*");
+  if (isUuid) {
+    query = query.eq("id", id);
+  } else {
+    query = query.eq("share_token", id);
+  }
+
+  const { data, error } = await query.single();
 
   if (error || !data) {
     return NextResponse.json({ error: "Report not found" }, { status: 404 });
