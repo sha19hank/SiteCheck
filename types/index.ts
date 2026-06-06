@@ -200,6 +200,66 @@ export interface CategoryAudit {
   auditSignals: Record<string, any>;
 }
 
+// ─── Phase 3: Website Understanding & Growth Intelligence ───────────────────
+
+export interface ExecutionTiming {
+  scrapingMs: number;
+  pageSpeedMs: number;
+  classificationMs: number;
+  categoryAuditMs: number;
+  websiteUnderstandingMs: number;
+  growthEngineMs: number;
+  totalMs: number;
+}
+
+export interface AIFailureLog {
+  step: "website_understanding" | "growth_engine";
+  status: "Success" | "Failed";
+  fallbackUsed: boolean;
+  errorReason?: string;
+  rawResponse?: string;
+}
+
+export interface WebsiteUnderstanding {
+  websiteType: WebsiteType;
+  businessModel: string;
+  primaryGoal: string;
+  targetAudience: string;
+  pagePurpose: string;
+  monetizationModel: string;
+  valueProposition: string;
+  customerJourneyStage: string;
+  confidence: number;
+  evidence: string[];
+}
+
+export interface WebsiteUnderstandingResult {
+  data: WebsiteUnderstanding;
+  log: AIFailureLog;
+}
+
+export interface GrowthInsight {
+  title: string;
+  impact: "low" | "medium" | "high";
+  confidence: number; // 0-1 scale
+  detected: string;
+  evidence: string[];
+  findingContext?: string;      // "Why this recommendation exists" finding
+  understandingContext?: string; // "Why this recommendation exists" understanding context
+  whyItMatters: string;
+  recommendedAction: string;
+}
+
+export interface GrowthReport {
+  readinessScore: number;
+  insights: GrowthInsight[];
+}
+
+export interface GrowthReportResult {
+  data: GrowthReport;
+  log: AIFailureLog;
+}
+
 // ─── Full audit record ────────────────────────────────────────────────────────
 
 export interface AuditRecord {
@@ -212,9 +272,13 @@ export interface AuditRecord {
   scores: AuditScores;
   scrapedData: ScrapedData;
   pageSpeedData: PageSpeedData;
-  aiReport: AIReport;
+  aiReport: AIReport; // Legacy side-by-side
   classification: WebsiteClassification | null;
   categoryAudit: CategoryAudit | null;
+  websiteUnderstanding: WebsiteUnderstanding | null;
+  growthReport: GrowthReport | null;
+  executionTiming?: ExecutionTiming;
+  aiLogs?: AIFailureLog[];
   screenshotData: ScreenshotData | null;
   isPaid: boolean;
   paymentId: string | null;

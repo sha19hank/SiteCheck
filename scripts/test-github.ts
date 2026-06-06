@@ -1,5 +1,21 @@
 import { classifyWebsite } from "../lib/audit/classifier";
+import { runCategoryAudit } from "../lib/audit/category-audits";
+import { understandWebsite } from "../lib/audit/website-understanding";
+import { generateGrowthReport } from "../lib/audit/growth-engine";
 import { ScrapedData, PageType } from "../types";
+import * as fs from "fs";
+
+try {
+  const env = fs.readFileSync(".env.local", "utf8");
+  for (const line of env.split("\n")) {
+    if (line.trim() && !line.startsWith("#")) {
+      const [key, ...rest] = line.split("=");
+      if (key && rest.length) process.env[key.trim()] = rest.join("=").trim();
+    }
+  }
+} catch (e) {
+  // ignore
+}
 
 // Mocking some common elements on github.com
 const githubData: ScrapedData = {
@@ -34,13 +50,27 @@ const githubData: ScrapedData = {
   pageType: "unknown" as PageType,
 };
 
-console.log("=== CLASSIFIER AUDIT: GITHUB.COM ===\n");
-const result = classifyWebsite(githubData);
-console.log(`Detected Type: ${result.websiteType}`);
-console.log(`Confidence: ${result.confidence.toFixed(2)}`);
-console.log(`\nScores:`);
-for (const [cat, score] of Object.entries(result.categoryScores)) {
-  if (score > 0) console.log(` - ${cat}: ${score}`);
+async function run() {
+  console.log("=== CLASSIFIER AUDIT: GITHUB.COM ===\n");
+  const classification = classifyWebsite(githubData);
+  console.log(`Detected Type: ${classification.websiteType}`);
+  console.log(`Confidence: ${classification.confidence.toFixed(2)}\n`);
+
+  console.log("=== PHASE 2: CATEGORY AUDIT ===\n");
+  const categoryAudit = runCategoryAudit(classification.websiteType, githubData);
+
+  console.log("\n=== 4. Website Understanding (Phase 3A) ===");
+  const wuResult = await understandWebsite(githubData, classification.websiteType);
+  const websiteUnderstanding = wuResult.data;
+  console.log("Business Model:", websiteUnderstanding.businessModel);
+  console.log("Target Audience:", websiteUnderstanding.targetAudience);
+  console.log("Primary Goal:", websiteUnderstanding.primaryGoal);
+  console.log("Value Proposition:", websiteUnderstanding.valueProposition);
+
+  console.log("\n=== 5. Growth Intelligence Engine (Phase 3B) ===");
+  const geResult = await generateGrowthReport(websiteUnderstanding, categoryAudit.findings);
+  const growthReport = geResult.data;
+  console.log("Readiness Score:", growthReport.readinessScore);
 }
-console.log(`\nReasoning Log:`);
-result.reasoning.forEach(r => console.log(r));
+
+run().catch(console.error);

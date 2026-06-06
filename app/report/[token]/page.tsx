@@ -11,6 +11,7 @@ import ComparisonBanner   from "@/components/report/ComparisonBanner";
 import ScreenshotPanel    from "@/components/report/ScreenshotPanel";
 import { cn, formatDate } from "@/lib/utils";
 import type { PartialReport, ScreenshotData } from "@/types";
+import DebugPanel from "@/components/report/DebugPanel";
 
 // ─── Share button ─────────────────────────────────────────────────────────────
 function ShareButton({ token }: { token: string }) {
@@ -124,6 +125,7 @@ function ReportContent() {
   const [error,        setError]        = useState("");
   const [showPayment,  setShowPayment]  = useState(false);
   const [justUnlocked, setJustUnlocked] = useState(false);
+  const [debugData,    setDebugData]    = useState<any>(null);
 
   const fetchReport = useCallback(() => {
     fetch(`/api/audit/${token}`)
@@ -132,6 +134,7 @@ function ReportContent() {
         auditId?: string;
         shareToken?: string;
         screenshots?: ScreenshotData;
+        debugData?: any;
         error?: string;
       }>)
       .then(data => {
@@ -140,6 +143,7 @@ function ReportContent() {
         setAuditId(data.auditId ?? "");
         setShareToken(data.shareToken ?? token);
         if (data.screenshots) setScreenshots(data.screenshots);
+        if (data.debugData) setDebugData(data.debugData);
       })
       .catch(() => setError("Failed to load report"))
       .finally(() => setLoading(false));
@@ -358,6 +362,10 @@ function ReportContent() {
               Powered by <Link href="/" className="hover:text-surface-500 transition-colors">SiteCheck AI</Link>
             </p>
           </div>
+
+          {process.env.NODE_ENV === "development" && debugData && (
+            <DebugPanel data={debugData} scores={scores} />
+          )}
         </main>
       </div>
     </>

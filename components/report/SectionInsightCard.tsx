@@ -58,28 +58,37 @@ export default function SectionInsightCard({
   const issues  = score.findings.filter(f => f.severity !== "pass");
   const passing = score.findings.filter(f => f.severity === "pass");
 
+  const isDevUnlocked = process.env.NODE_ENV === "development" && process.env.NEXT_PUBLIC_DEV_UNLOCK_ALL === "true";
+  const isEffectivelyLocked = locked && !isDevUnlocked;
+
   return (
     <div className="card overflow-hidden">
       {/* Header — always visible */}
       <button
-        className="w-full flex items-center justify-between p-5 sm:p-6 text-left hover:bg-surface-50 transition-colors duration-150"
+        className={cn(
+          "w-full flex items-center justify-between p-5 sm:p-6 text-left transition-colors duration-150",
+          isEffectivelyLocked ? "hover:bg-surface-50 cursor-pointer" : "hover:bg-surface-50"
+        )}
         onClick={() => {
-          if (locked) {
+          if (isEffectivelyLocked) {
             onUnlock?.();
           } else {
             console.log(`[Accordion] Toggled dimension: ${dimension}, new state: ${!expanded}`);
             setExpanded(!expanded);
           }
         }}
-        aria-expanded={locked ? false : expanded}
+        aria-expanded={isEffectivelyLocked ? false : expanded}
       >
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: `${color}15`, color }}>
             {ICONS[dimension]}
           </div>
           <div>
-            <p className="text-sm font-semibold text-surface-900">{dimLabel}</p>
-            {insight?.keyFinding && !locked && (
+            <p className="text-sm font-semibold text-surface-900">
+              {dimLabel}
+              {isDevUnlocked && locked && <span className="ml-2 text-[10px] bg-rose-100 text-rose-600 px-1 py-0.5 rounded uppercase font-bold tracking-widest">DEV UNLOCKED</span>}
+            </p>
+            {insight?.keyFinding && !isEffectivelyLocked && (
               <p className="text-xs text-surface-500 mt-0.5 max-w-xs truncate">{insight.keyFinding}</p>
             )}
           </div>
@@ -97,7 +106,7 @@ export default function SectionInsightCard({
             {label}
           </span>
 
-          {locked ? (
+          {isEffectivelyLocked ? (
             <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 text-surface-400">
               <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd"/>
             </svg>
@@ -110,7 +119,7 @@ export default function SectionInsightCard({
       </button>
 
       {/* Body */}
-      {!locked && expanded && (
+      {!isEffectivelyLocked && expanded && (
         <div className="border-t border-surface-100 p-5 sm:p-6 space-y-5">
           {/* Summary */}
           {insight?.summary && (
@@ -163,7 +172,7 @@ export default function SectionInsightCard({
       )}
 
       {/* Locked overlay */}
-      {locked && (
+      {isEffectivelyLocked && (
         <div
           className="border-t border-surface-100 px-5 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer hover:bg-surface-50 transition-colors group"
           onClick={onUnlock}

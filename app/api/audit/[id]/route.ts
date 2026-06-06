@@ -45,10 +45,28 @@ export async function GET(
     createdAt: data.created_at,
   };
 
-  return NextResponse.json({
+  const response: any = {
     report,
     auditId:     data.id,
     shareToken:  data.share_token,
     screenshots: data.screenshot_data ?? null,
-  });
+  };
+
+  if (process.env.NODE_ENV === "development") {
+    response.debugData = {
+      timing: data.execution_timing,
+      aiFailures: data.ai_logs,
+      classification: {
+        websiteType: data.website_type,
+        confidence: data.classification_confidence,
+        categoryScores: data.classification_scores,
+        reasoning: data.classification_reasoning,
+      },
+      categoryAudit: data.category_audit,
+      websiteUnderstanding: data.website_understanding,
+      growthReport: data.growth_report,
+    };
+  }
+
+  return NextResponse.json(response);
 }

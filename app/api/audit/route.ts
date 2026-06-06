@@ -100,7 +100,8 @@ export async function POST(req: NextRequest) {
           'score_overall', 'score_performance', 'score_trust', 'score_clarity', 'score_conversion', 
           'scores', 'scraped_data', 'pagespeed_data', 'ai_report', 'is_paid', 'payment_id', 
           'created_at', 'website_type', 'classification_confidence', 'classification_scores', 
-          'classification_reasoning', 'category_audit'
+          'classification_reasoning', 'category_audit', 'website_understanding', 'growth_report',
+          'execution_timing', 'ai_logs'
         ];
         if (availableColumns.length > 0) {
           const missingColumns = expectedColumns.filter(c => !availableColumns.includes(c));
@@ -135,6 +136,10 @@ export async function POST(req: NextRequest) {
         classification_scores:     record.classification?.categoryScores ?? null,
         classification_reasoning:  record.classification?.reasoning ?? null,
         category_audit:            record.categoryAudit ?? null,
+        website_understanding:     record.websiteUnderstanding ?? null,
+        growth_report:             record.growthReport ?? null,
+        execution_timing:          record.executionTiming ?? null,
+        ai_logs:                   record.aiLogs ?? null,
         is_paid:                   false,
         // screenshot_data is commented out because it does not exist in the initial schema.
         // screenshot_data: record.screenshotData,
