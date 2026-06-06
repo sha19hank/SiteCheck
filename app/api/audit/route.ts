@@ -140,9 +140,13 @@ export async function POST(req: NextRequest) {
         growth_report:             record.growthReport ?? null,
         execution_timing:          record.executionTiming ?? null,
         ai_logs:                   record.aiLogs ?? null,
+        ai_available:              record.aiAvailable ?? null,
+        fallback_used:             record.fallbackUsed ?? null,
+        ai_failure_reason_code:    record.aiFailureReasonCode ?? null,
+        ai_failure_reason_message: record.aiFailureReasonMessage ?? null,
+        audit_confidence:          record.auditConfidence ?? null,
+        scrape_diagnostics:        record.scrapeDiagnostics ?? null,
         is_paid:                   false,
-        // screenshot_data is commented out because it does not exist in the initial schema.
-        // screenshot_data: record.screenshotData,
       };
 
       console.error(">>> [DEBUG] Insert Payload Keys:", Object.keys(insertPayload));

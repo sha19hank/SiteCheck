@@ -86,6 +86,7 @@ export interface ScrapedData {
   bodyWordCount: number;
   hasViewport: boolean;
   pageType: PageType;
+  structuredDataTypes: string[];
 }
 
 export type PageType =
@@ -262,6 +263,41 @@ export interface GrowthReportResult {
 
 // ─── Full audit record ────────────────────────────────────────────────────────
 
+export interface ScrapeSnapshot {
+  title: string | null;
+  metaDescription: string | null;
+  h1Count: number;
+  h2Count: number;
+  navLinkCount: number;
+  ctaCount: number;
+  structuredDataTypes: string[];
+}
+
+export interface ScrapeDiagnostics {
+  htmlLength: number;
+  renderedHtmlLength: number;
+  dataCompleteness: number; // 0-100
+  scrapeSuccess: boolean;
+  scrapeQuality: "HIGH" | "MEDIUM" | "LOW";
+  pageErrors: number;
+  blockedRequests: number;
+  challengeDetected: boolean;
+  captchaDetected: boolean;
+  accessDeniedDetected: boolean;
+  bodyWordCount: number;
+  navCount: number;
+  ctaCount: number;
+  imageCount: number;
+  failureReasonCode: "TIMEOUT" | "ACCESS_DENIED" | "CAPTCHA" | "CLOUDFLARE_CHALLENGE" | "JS_RENDER_FAILED" | "EMPTY_DOM" | "UNKNOWN" | null;
+  httpStatus: number;
+  finalUrl: string;
+  redirectCount: number;
+  scrapeNotes: string[];
+  scrapeSnapshot: ScrapeSnapshot;
+  extractionSources: Record<string, string>;
+  extractionCoverage: Record<string, boolean>;
+}
+
 export interface AuditRecord {
   id: string;
   userId: string | null;
@@ -279,6 +315,15 @@ export interface AuditRecord {
   growthReport: GrowthReport | null;
   executionTiming?: ExecutionTiming;
   aiLogs?: AIFailureLog[];
+  
+  // Phase 0: Transparency & Diagnostics
+  aiAvailable?: boolean;
+  fallbackUsed?: boolean;
+  aiFailureReasonCode?: "QUOTA_EXCEEDED" | "RATE_LIMITED" | "SERVICE_UNAVAILABLE" | "INVALID_API_KEY" | "TIMEOUT" | "UNKNOWN" | null;
+  aiFailureReasonMessage?: string | null;
+  auditConfidence?: "HIGH" | "MEDIUM" | "LOW";
+  scrapeDiagnostics?: ScrapeDiagnostics;
+
   screenshotData: ScreenshotData | null;
   isPaid: boolean;
   paymentId: string | null;
@@ -341,6 +386,19 @@ export interface PartialReport {
   };
   isPaid: boolean;
   createdAt: string;
+  // Phase 0 metrics
+  aiAvailable?: boolean;
+  fallbackUsed?: boolean;
+  aiFailureReasonCode?: string | null;
+  aiFailureReasonMessage?: string | null;
+  auditConfidence?: "HIGH" | "MEDIUM" | "LOW";
+  scrapeDiagnostics?: ScrapeDiagnostics;
+  classifierInputPreview?: {
+    title: string | null;
+    navLinks: string[];
+    ctas: string[];
+    structuredDataTypes: string[];
+  };
 }
 
 // ─── Screenshot data ──────────────────────────────────────────────────────────

@@ -1,36 +1,58 @@
-// Removed dotenv
-
 import { runAudit } from "../lib/audit/index";
 
-async function testAudit() {
-  console.log("Running full audit for timing and AI log validation...");
-  const url = "https://github.com";
-  
-  const originalEnv = process.env.NODE_ENV;
-  // Make sure we have a key
-  
-  try {
-    const record = await runAudit({ url });
-    
-    console.log("\n=== EXECUTION TIMING ===");
-    console.log(JSON.stringify(record.executionTiming, null, 2));
-    
-    console.log("\n=== AI LOGS (SUCCESS) ===");
-    console.log(JSON.stringify(record.aiLogs, null, 2));
+const SITES = [
+  "https://github.com",
+  "https://youtube.com",
+  "https://canva.com",
+  "https://notion.so",
+  "https://amazon.com",
+  "https://etsy.com",
+  "https://aliabdaal.com",
+  "https://webflow.com"
+];
 
-    console.log("\n=== SIMULATING AI FAILURE ===");
-    const originalKey = process.env.GEMINI_API_KEY;
-    process.env.GEMINI_API_KEY = "invalid-key";
-    
-    const recordFail = await runAudit({ url });
-    console.log("\n=== AI LOGS (FAILED) ===");
-    console.log(JSON.stringify(recordFail.aiLogs, null, 2));
-    
-    // Restore
-    process.env.GEMINI_API_KEY = originalKey;
-    
-  } catch (err) {
-    console.error("Audit failed:", err);
+async function testAudit() {
+  console.log("Running Phase 1 Benchmark...");
+  
+  const results = [];
+  
+  for (const url of SITES) {
+    console.log(`Auditing: ${url}...`);
+    try {
+      const record = await runAudit({ url });
+      const diag = record.scrapeDiagnostics!;
+      const data = record.scrapedData!;
+      
+      results.push({
+        site: url,
+        httpStatus: diag.httpStatus,
+        scrapeTime: record.executionTiming?.scrapingMs,
+        completeness: diag.dataCompleteness,
+        quality: diag.scrapeQuality,
+        challenge: diag.challengeDetected,
+        captcha: diag.captchaDetected,
+        structuredData: data.structuredDataTypes.join(", ") || "None",
+        classConf: record.classification?.confidence.toFixed(2),
+        topNav: data.navLinks.slice(0, 3).join(", "),
+        topCta: data.ctaTexts.slice(0, 3).join(", "),
+        wordCount: diag.bodyWordCount,
+        classResult: record.classification?.websiteType,
+      });
+    } catch (err: any) {
+      console.error(`Audit failed for ${url}:`, err.message);
+      results.push({ site: url, error: err.message });
+    }
+  }
+
+  console.log("\n### Benchmark Results Table\n");
+  console.log("| Site | Status | Time(ms) | Comp. | Qual. | Chall. | CAPTCHA | JSON-LD | Conf. | Top Nav | Top CTA | Words | Class Result |");
+  console.log("|---|---|---|---|---|---|---|---|---|---|---|---|---|");
+  for (const r of results) {
+    if ((r as any).error) {
+      console.log(`| ${r.site} | ERROR | ${(r as any).error} | - | - | - | - | - | - | - | - | - | - |`);
+      continue;
+    }
+    console.log(`| ${r.site} | ${r.httpStatus} | ${r.scrapeTime} | ${r.completeness} | ${r.quality} | ${r.challenge} | ${r.captcha} | ${r.structuredData} | ${r.classConf} | ${r.topNav} | ${r.topCta} | ${r.wordCount} | ${r.classResult} |`);
   }
 }
 

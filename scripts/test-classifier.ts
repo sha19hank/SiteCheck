@@ -33,6 +33,7 @@ function createMockData(navLinks: string[], ctaTexts: string[], h1s: string[], t
     bodyWordCount: 500,
     hasViewport: true,
     pageType: "unknown" as PageType,
+    structuredDataTypes: [],
   };
 }
 

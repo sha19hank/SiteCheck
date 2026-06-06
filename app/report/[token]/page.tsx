@@ -112,6 +112,51 @@ function Skeleton() {
   );
 }
 
+// ─── Status banner ─────────────────────────────────────────────────────────────
+function StatusBanner({ report }: { report: PartialReport }) {
+  if (!report.auditConfidence && report.aiAvailable === undefined) return null; // Old report
+
+  return (
+    <div className="card p-4 bg-slate-50 border-slate-200 text-xs text-slate-600 flex flex-col sm:flex-row gap-4 justify-between animate-fade-up fill-both">
+      <div className="flex gap-2 items-center">
+        <span className="font-semibold text-slate-800">Audit Confidence:</span>
+        <span className={cn(
+          "px-2 py-0.5 rounded-full font-bold",
+          report.auditConfidence === "HIGH" ? "bg-emerald-100 text-emerald-700" :
+          report.auditConfidence === "MEDIUM" ? "bg-amber-100 text-amber-700" :
+          "bg-rose-100 text-rose-700"
+        )}>
+          {report.auditConfidence || "UNKNOWN"}
+        </span>
+      </div>
+      
+      <div className="flex gap-4">
+        <div className="flex flex-col gap-1">
+          <span className="font-semibold text-slate-800">AI Engine</span>
+          <span className="flex items-center gap-1">
+            {report.aiAvailable ? (
+               <><span className="w-2 h-2 rounded-full bg-emerald-500"></span> Online</>
+            ) : (
+               <><span className="w-2 h-2 rounded-full bg-rose-500"></span> Fallback Active</>
+            )}
+            {report.aiFailureReasonCode && <span className="text-slate-400">({report.aiFailureReasonCode})</span>}
+          </span>
+        </div>
+        <div className="flex flex-col gap-1">
+          <span className="font-semibold text-slate-800">Scraper</span>
+          <span className="flex items-center gap-1">
+            {report.scrapeDiagnostics?.scrapeSuccess ? (
+               <><span className="w-2 h-2 rounded-full bg-emerald-500"></span> Success ({report.scrapeDiagnostics.scrapeQuality})</>
+            ) : (
+               <><span className="w-2 h-2 rounded-full bg-rose-500"></span> Failed</>
+            )}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Report content ────────────────────────────────────────────────────────────
 function ReportContent() {
   const params = useParams<{ token: string }>();
@@ -236,6 +281,8 @@ function ReportContent() {
           {auditId && (
             <ComparisonBanner domain={domain} currentId={auditId} shareToken={shareToken} />
           )}
+
+          <StatusBanner report={report} />
 
           {/* ── Hero score card ───────────────────────────────────────────── */}
           <div className="card p-6 sm:p-8 animate-fade-up fill-both">

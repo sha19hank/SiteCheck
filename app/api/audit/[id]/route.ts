@@ -24,25 +24,27 @@ export async function GET(
     return NextResponse.json({ error: "Report not found" }, { status: 404 });
   }
 
-  const ai = data.ai_report;
-  const find = (dim: string): SectionInsight | null =>
-    ai.sectionInsights?.find((s: SectionInsight) => s.dimension === dim) ?? null;
-
   const report: PartialReport = {
-    domain:            data.domain,
-    url:               data.url,
-    scores:            data.scores,
-    consultantSummary: ai.consultantSummary,
-    overallNarrative:  ai.overallNarrative,
-    quickWins:         ai.quickWins,
-    sectionInsights: {
-      performance: find("performance"),
-      trust:       find("trust"),
-      clarity:     data.is_paid ? find("clarity")    : null,
-      conversion:  data.is_paid ? find("conversion") : null,
+    domain: data.domain,
+    url: data.url,
+    scores: data.scores,
+    consultantSummary: data.ai_report?.consultantSummary || "",
+    overallNarrative: data.ai_report?.overallNarrative || "",
+    quickWins: data.ai_report?.quickWins || [],
+    sectionInsights: data.ai_report?.sectionInsights || {
+      performance: null,
+      trust: null,
+      clarity: null,
+      conversion: null,
     },
-    isPaid:    data.is_paid,
+    isPaid: data.is_paid,
     createdAt: data.created_at,
+    aiAvailable: data.ai_available,
+    fallbackUsed: data.fallback_used,
+    aiFailureReasonCode: data.ai_failure_reason_code,
+    aiFailureReasonMessage: data.ai_failure_reason_message,
+    auditConfidence: data.audit_confidence,
+    scrapeDiagnostics: data.scrape_diagnostics,
   };
 
   const response: any = {
@@ -65,6 +67,18 @@ export async function GET(
       categoryAudit: data.category_audit,
       websiteUnderstanding: data.website_understanding,
       growthReport: data.growth_report,
+      aiAvailable: data.ai_available,
+      fallbackUsed: data.fallback_used,
+      aiFailureReasonCode: data.ai_failure_reason_code,
+      aiFailureReasonMessage: data.ai_failure_reason_message,
+      auditConfidence: data.audit_confidence,
+      scrapeDiagnostics: data.scrape_diagnostics,
+      classifierInputPreview: {
+        title: data.scraped_data?.title || null,
+        navLinks: data.scraped_data?.navLinks || [],
+        ctas: data.scraped_data?.ctaTexts || [],
+        structuredDataTypes: data.scraped_data?.structuredDataTypes || [],
+      },
     };
   }
 

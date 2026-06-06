@@ -15,10 +15,11 @@ export async function runAudit(request: AuditRequest): Promise<AuditRecord> {
   // ── Layer 1: Parallel data collection ─────────────────────────────────────
   // Screenshots run separately — non-fatal if they fail
   const scrapeStart = performance.now();
-  const [pageSpeedData, scrapedData] = await Promise.all([
+  const [pageSpeedData, scraperResult] = await Promise.all([
     fetchPageSpeed(url),
     scrapeUrl(url),
   ]);
+  const { scrapedData, scrapeDiagnostics } = scraperResult;
   const scrapeEnd = performance.now();
 
   // ── Phase 1: Classification ───────────────────────────────────────────────
@@ -79,6 +80,39 @@ export async function runAudit(request: AuditRequest): Promise<AuditRecord> {
 
   const aiLogs = [wuResult.log, geResult.log];
 
+  // Phase 0 metrics
+  const fallbackUsed = aiLogs.some(l => l.fallbackUsed);
+  const aiAvailable = !fallbackUsed;
+  
+  let aiFailureReasonCode: any = null;
+  let aiFailureReasonMessage: string | null = null;
+  
+  if (fallbackUsed) {
+    const errorLog = aiLogs.find(l => l.fallbackUsed && l.errorReason);
+    const reason = errorLog?.errorReason || "";
+    
+    if (reason.includes("429") || reason.includes("RATE_LIMITED") || reason.includes("exhausted")) {
+      aiFailureReasonCode = "QUOTA_EXCEEDED";
+    } else if (reason.includes("503") || reason.includes("unavailable")) {
+      aiFailureReasonCode = "SERVICE_UNAVAILABLE";
+    } else if (reason.includes("API key not valid") || reason.includes("INVALID_API_KEY") || reason.includes("400")) {
+      aiFailureReasonCode = "INVALID_API_KEY";
+    } else if (reason.includes("timeout")) {
+      aiFailureReasonCode = "TIMEOUT";
+    } else {
+      aiFailureReasonCode = "UNKNOWN";
+    }
+    aiFailureReasonMessage = reason.substring(0, 200); // cap length
+  }
+
+  // Calculate audit confidence
+  let auditConfidence: "HIGH" | "MEDIUM" | "LOW" = "HIGH";
+  if (!scrapeDiagnostics.scrapeSuccess || !aiAvailable || classification.confidence < 0.40) {
+    auditConfidence = "LOW";
+  } else if (classification.confidence < 0.75 || scrapeDiagnostics.scrapeQuality === "MEDIUM") {
+    auditConfidence = "MEDIUM";
+  }
+
   return {
     id:             crypto.randomUUID(),
     userId:         null,
@@ -96,6 +130,12 @@ export async function runAudit(request: AuditRequest): Promise<AuditRecord> {
     growthReport,
     executionTiming,
     aiLogs,
+    aiAvailable,
+    fallbackUsed,
+    aiFailureReasonCode,
+    aiFailureReasonMessage,
+    auditConfidence,
+    scrapeDiagnostics,
     screenshotData,
     isPaid:         false,
     paymentId:      null,

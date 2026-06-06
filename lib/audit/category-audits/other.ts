@@ -3,13 +3,22 @@ import { ScrapedData, CategoryAudit, CategoryFinding, CategoryRecommendation } f
 export function runOtherAudit(data: ScrapedData): CategoryAudit {
   return {
     websiteType: "other",
-    overallScore: 100,
-    categoryScores: { trust: 100, conversion: 100, clarity: 100, performance: 100 },
-    findings: [],
+    overallScore: 0,
+    categoryScores: { trust: 0, conversion: 0, clarity: 0, performance: 0 },
+    findings: [{
+      id: "insufficient_confidence",
+      title: "Insufficient category confidence for category-specific audit.",
+      description: "The system could not confidently determine your business model. Standard generic rules applied.",
+      severity: "critical",
+      category: "trust",
+      priority: 100,
+      evidence: [],
+      source: "classifier"
+    }],
     recommendations: [],
     strengths: [],
     weaknesses: [],
-    healthGrade: "A",
-    auditSignals: {}
+    healthGrade: "N/A",
+    auditSignals: { unavailable: true }
   };
 }

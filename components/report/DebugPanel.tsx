@@ -65,7 +65,7 @@ export default function DebugPanel({ data, scores }: DebugPanelProps) {
                 <div className="space-y-4">
                   {data.aiFailures.map((log: any, i: number) => (
                     <div key={i} className="text-xs">
-                      <p className="font-bold uppercase text-slate-500 mb-1">{log.step.replace('_', ' ')}</p>
+                      <p className="font-bold uppercase text-slate-500 mb-1">{(log?.step ?? "unknown").replace('_', ' ')}</p>
                       <div className="flex justify-between"><span>Status:</span><span className={log.status === "Success" ? "text-emerald-600 font-bold" : "text-rose-600 font-bold"}>{log.status}</span></div>
                       <div className="flex justify-between"><span>Fallback:</span><span>{log.fallbackUsed ? "Yes" : "No"}</span></div>
                       {log.errorReason && <div className="text-rose-500 mt-1">Reason: {log.errorReason}</div>}
@@ -168,7 +168,7 @@ export default function DebugPanel({ data, scores }: DebugPanelProps) {
                   <div key={i} className="bg-slate-50 p-2 rounded border border-slate-100 flex gap-4">
                     <span className="font-bold text-indigo-500 w-24 shrink-0">[{f.category}]</span>
                     <span className={`font-bold w-16 shrink-0 ${f.severity === "high" || f.severity === "critical" ? "text-rose-500" : f.severity === "medium" ? "text-amber-500" : "text-emerald-500"}`}>{f.severity}</span>
-                    <span className="flex-1">{f.detail || f.check.replace(/_/g, " ")}</span>
+                    <span className="flex-1">{f?.detail || f?.title || (f?.check && typeof f.check === "string" ? f.check.replace(/_/g, " ") : "Unknown check")}</span>
                   </div>
                 ))}
               </div>
@@ -250,7 +250,7 @@ export default function DebugPanel({ data, scores }: DebugPanelProps) {
                         {deductions.map((d, i) => (
                           <div key={i} className="flex gap-2">
                             <span className="text-rose-600 font-bold shrink-0">- pts</span>
-                            <span className="text-slate-700">{d.check.replace(/_/g, ' ')}</span>
+                            <span className="text-slate-700">{typeof d?.check === "string" ? d.check.replace(/_/g, ' ') : "Unknown check"}</span>
                             {d.detail && <span className="text-slate-400">({d.detail})</span>}
                           </div>
                         ))}
@@ -265,7 +265,7 @@ export default function DebugPanel({ data, scores }: DebugPanelProps) {
                         {bonuses.map((b, i) => (
                           <div key={i} className="flex gap-2">
                             <span className="text-emerald-600 font-bold shrink-0">+ pass</span>
-                            <span className="text-slate-700">{b.check.replace(/_/g, ' ')}</span>
+                            <span className="text-slate-700">{typeof b?.check === "string" ? b.check.replace(/_/g, ' ') : "Unknown check"}</span>
                           </div>
                         ))}
                       </div>

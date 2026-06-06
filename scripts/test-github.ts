@@ -48,6 +48,7 @@ const githubData: ScrapedData = {
   bodyWordCount: 1500,
   hasViewport: true,
   pageType: "unknown" as PageType,
+  structuredDataTypes: [],
 };
 
 async function run() {
