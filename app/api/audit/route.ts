@@ -134,7 +134,12 @@ export async function POST(req: NextRequest) {
         website_type:              record.classification?.websiteType ?? "unknown",
         classification_confidence: record.classification?.confidence ?? 0,
         classification_scores:     record.classification?.categoryScores ?? null,
-        classification_reasoning:  record.classification?.reasoning ?? null,
+        classification_reasoning:  record.classification ? {
+          evidence: record.classification.evidence,
+          deterministicScore: record.classification.deterministicScore,
+          aiAgreement: record.classification.aiAgreement,
+          voteBreakdown: record.classification.voteBreakdown
+        } : null,
         category_audit:            record.categoryAudit ?? null,
         website_understanding:     record.websiteUnderstanding ?? null,
         growth_report:             record.growthReport ?? null,
@@ -146,6 +151,7 @@ export async function POST(req: NextRequest) {
         ai_failure_reason_message: record.aiFailureReasonMessage ?? null,
         audit_confidence:          record.auditConfidence ?? null,
         scrape_diagnostics:        record.scrapeDiagnostics ?? null,
+        consultant_report:         record.consultantReport ?? null,
         is_paid:                   false,
       };
 
@@ -184,6 +190,7 @@ function findInsight(insights: SectionInsight[] | undefined, dim: string): Secti
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  // ... skipping down to PartialReport builders ...
 function buildPartialReportFromRow(row: Record<string, any>): PartialReport {
   const scores = row.scores;
   const ai = row.ai_report;
@@ -191,15 +198,16 @@ function buildPartialReportFromRow(row: Record<string, any>): PartialReport {
     domain: row.domain,
     url:    row.url,
     scores,
-    consultantSummary: ai.consultantSummary,
-    overallNarrative:  ai.overallNarrative,
-    quickWins:         ai.quickWins,
+    consultantSummary: ai?.consultantSummary || "",
+    overallNarrative:  ai?.overallNarrative || "",
+    quickWins:         ai?.quickWins || [],
     sectionInsights: {
-      performance: findInsight(ai.sectionInsights, "performance"),
-      trust:       findInsight(ai.sectionInsights, "trust"),
-      clarity:     row.is_paid ? findInsight(ai.sectionInsights, "clarity") : null,
-      conversion:  row.is_paid ? findInsight(ai.sectionInsights, "conversion") : null,
+      performance: findInsight(ai?.sectionInsights, "performance"),
+      trust:       findInsight(ai?.sectionInsights, "trust"),
+      clarity:     row.is_paid ? findInsight(ai?.sectionInsights, "clarity") : null,
+      conversion:  row.is_paid ? findInsight(ai?.sectionInsights, "conversion") : null,
     },
+    consultantReport: row.consultant_report,
     isPaid:    row.is_paid,
     createdAt: row.created_at,
   };
@@ -211,15 +219,16 @@ function buildPartialReportFromRecord(record: AuditRecord): PartialReport {
     domain: record.domain,
     url:    record.url,
     scores: record.scores,
-    consultantSummary: ai.consultantSummary,
-    overallNarrative:  ai.overallNarrative,
-    quickWins:         ai.quickWins,
+    consultantSummary: ai?.consultantSummary || "",
+    overallNarrative:  ai?.overallNarrative || "",
+    quickWins:         ai?.quickWins || [],
     sectionInsights: {
-      performance: findInsight(ai.sectionInsights, "performance"),
-      trust:       findInsight(ai.sectionInsights, "trust"),
+      performance: findInsight(ai?.sectionInsights, "performance"),
+      trust:       findInsight(ai?.sectionInsights, "trust"),
       clarity:     null,
       conversion:  null,
     },
+    consultantReport: record.consultantReport,
     isPaid:    false,
     createdAt: record.createdAt,
   };

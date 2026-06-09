@@ -24,7 +24,7 @@ export default function DebugPanel({ data, scores }: DebugPanelProps) {
           Developer Debug Panel
         </h2>
         <div className="flex gap-2">
-          {["overview", "understanding", "category", "growth", "scores", "raw"].map(t => (
+          {["overview", "understanding", "category", "growth", "consultant", "scores", "raw"].map(t => (
             <button
               key={t}
               onClick={() => setActiveTab(t)}
@@ -77,21 +77,68 @@ export default function DebugPanel({ data, scores }: DebugPanelProps) {
 
             {/* CLASSIFICATION COMPETITION */}
             <div className="col-span-2 bg-white p-4 rounded border border-slate-200">
-              <h3 className="font-bold text-sm mb-3 border-b pb-2">Classification Competition View</h3>
-              <div className="flex justify-between font-bold mb-2">
-                <span>Final Decision: <span className="text-indigo-600">{data.classification?.websiteType}</span></span>
-                <span>Confidence: {data.classification?.confidence.toFixed(2)}</span>
+              <h3 className="font-bold text-sm mb-3 border-b pb-2">Classification Insights</h3>
+              <div className="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <div className="text-slate-400 font-bold mb-1">Final Decision</div>
+                  <div className="text-indigo-600 font-bold text-lg">{data.classification?.websiteType}</div>
+                </div>
+                <div>
+                  <div className="text-slate-400 font-bold mb-1">Platform Type</div>
+                  <div className="text-slate-700 font-bold text-lg">{data.classification?.platformType || "N/A"}</div>
+                </div>
+                <div>
+                  <div className="text-slate-400 font-bold mb-1">Confidence</div>
+                  <div className="font-medium text-lg">{data.classification?.confidence?.toFixed(2)}</div>
+                </div>
+                <div>
+                  <div className="text-slate-400 font-bold mb-1">Deterministic Score</div>
+                  <div className="font-medium">{data.classification?.deterministicScore}</div>
+                </div>
+                <div>
+                  <div className="text-slate-400 font-bold mb-1">AI Status</div>
+                  <div className="font-medium uppercase">{data.classification?.aiStatus || (data.classification?.aiAgreement ? "AI_AGREEMENT" : "AI_DISAGREEMENT")}</div>
+                </div>
               </div>
-              <div className="grid grid-cols-4 gap-4 mb-4">
-                {Object.entries(data.classification?.categoryScores || {})
-                  .sort(([, a]: any, [, b]: any) => b - a)
-                  .map(([type, score]: any) => (
-                    <div key={type} className="bg-slate-100 p-2 rounded text-center">
-                      <div className="uppercase font-bold">{type}</div>
-                      <div className="text-lg">{score}</div>
-                    </div>
-                  ))}
-              </div>
+              
+              {data.classification?.classificationSummary && data.classification.classificationSummary.length > 0 && (
+                <div className="mt-4 border-t pt-4 bg-indigo-50/50 p-4 rounded-lg">
+                  <h4 className="font-bold text-sm mb-2 text-indigo-900 uppercase">Classification Summary</h4>
+                  <p className="text-xs text-slate-600 mb-2">Detected as <span className="font-bold">{data.classification.websiteType}</span> because:</p>
+                  <ul className="list-disc pl-5 space-y-1 text-xs text-slate-700">
+                    {data.classification.classificationSummary.map((s: string, i: number) => (
+                      <li key={i}>{s}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              
+              {data.classification?.voteBreakdown && (
+                <div className="mt-4 border-t pt-4">
+                  <h4 className="font-bold text-sm mb-2 text-slate-600 uppercase">Vote Breakdown</h4>
+                  <div className="space-y-4">
+                    {["businessModel", "structuredData", "ai", "navigation", "cta", "keyword"].map((signalType) => {
+                      const votes = data.classification?.voteBreakdown?.[signalType];
+                      if (!votes || votes.length === 0) return null;
+                      return (
+                        <div key={signalType} className="bg-slate-50 p-2 rounded border border-slate-100">
+                          <h5 className="font-bold text-slate-500 uppercase text-[10px] mb-2">{signalType}</h5>
+                          <ul className="space-y-1">
+                            {votes.map((v: any, i: number) => (
+                              <li key={i} className="flex gap-2">
+                                <span className="font-bold text-indigo-500 shrink-0 w-10">+{v.voteValue}</span>
+                                <span className="font-bold shrink-0 w-24 text-slate-600">{v.category}</span>
+                                <span className="text-slate-500 italic shrink-0 w-24">({v.source})</span>
+                                <span className="flex-1 truncate" title={v.matchedText}>"{v.matchedText}"</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

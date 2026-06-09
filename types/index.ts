@@ -158,11 +158,45 @@ export type WebsiteType =
 
 export type CategoryScores = Record<WebsiteType, number>;
 
+export interface ClassificationEvidence {
+  signalType: "keyword" | "navigation" | "cta" | "structuredData" | "ai" | "businessModel";
+  category: WebsiteType;
+  source: string;
+  matchedText: string;
+  voteValue: number;
+}
+
+export interface VoteBreakdown {
+  keyword: ClassificationEvidence[];
+  navigation: ClassificationEvidence[];
+  cta: ClassificationEvidence[];
+  structuredData: ClassificationEvidence[];
+  ai: ClassificationEvidence[];
+  businessModel: ClassificationEvidence[];
+}
+
+export type AiStatus = 
+  | "AI_AVAILABLE"
+  | "AI_TIMEOUT"
+  | "AI_RATE_LIMITED"
+  | "AI_QUOTA_EXCEEDED"
+  | "AI_DISABLED"
+  | "AI_DISAGREEMENT"
+  | "AI_ERROR";
+
 export interface WebsiteClassification {
   websiteType: WebsiteType;
+  platformType?: string;
   confidence: number;
+  confidenceTier: "HIGH" | "MEDIUM" | "LOW"; // Phase 4 addition
   categoryScores: CategoryScores;
   reasoning: string[];
+  evidence: ClassificationEvidence[];
+  deterministicScore: number;
+  aiAgreement: boolean;
+  aiStatus: AiStatus;
+  classificationSummary: string[];
+  voteBreakdown: VoteBreakdown;
 }
 
 export interface CategoryFinding {
@@ -219,9 +253,12 @@ export interface AIFailureLog {
   fallbackUsed: boolean;
   errorReason?: string;
   rawResponse?: string;
+  aiStatus?: AiStatus;
 }
 
 export interface WebsiteUnderstanding {
+  proposedWebsiteType: WebsiteType;
+  platformType: string;
   websiteType: WebsiteType;
   businessModel: string;
   primaryGoal: string;
@@ -313,6 +350,7 @@ export interface AuditRecord {
   categoryAudit: CategoryAudit | null;
   websiteUnderstanding: WebsiteUnderstanding | null;
   growthReport: GrowthReport | null;
+  consultantReport: ConsultantReport | null; // Phase 4 addition
   executionTiming?: ExecutionTiming;
   aiLogs?: AIFailureLog[];
   
@@ -328,6 +366,74 @@ export interface AuditRecord {
   isPaid: boolean;
   paymentId: string | null;
   createdAt: string;
+}
+
+// ─── Phase 4: Consultant Report ──────────────────────────────────────────────
+
+export interface ActionableInsight {
+  problem: string;
+  evidence: string[];
+  whyItMatters: string;
+  businessImpact: string;
+  recommendedFix: string;
+  priority: "High" | "Medium" | "Low";
+  effort: "High" | "Medium" | "Low";
+  expectedOutcome: string;
+}
+
+export interface SectionAnalysis {
+  score: number;
+  findings: string[];
+  whyItMatters: string;
+  businessImpact: string;
+  recommendedActions: string[];
+}
+
+export interface CompetitivePositioning {
+  strengths: string[];
+  missingIndustryStandards: string[];
+  potentialDisadvantages: string[];
+}
+
+export interface ActionPlanWeek {
+  week: string; // e.g., "Week 1", "Week 2"
+  focus: string;
+  tasks: string[];
+}
+
+export interface PriorityMatrix {
+  immediateWins: ActionableInsight[]; // High Impact / Low Effort
+  strategicProjects: ActionableInsight[]; // High Impact / High Effort
+  optionalImprovements: ActionableInsight[]; // Low Impact / Low Effort
+  deprioritize: ActionableInsight[]; // Low Impact / High Effort
+}
+
+export interface EvidenceItem {
+  finding: string;
+  source: string;
+  impact: string;
+}
+
+export interface ConsultantReport {
+  // Report Meta
+  reportConfidence: { level: "HIGH" | "MEDIUM" | "LOW"; explanation: string };
+  auditLimitations: { text: string; aiAvailable: boolean; scrapeQuality: string; classificationConfidence: string };
+  
+  // Free Tier
+  executiveSummary: string;
+  websiteHealthScore: number;
+  topQuickWins: ActionableInsight[]; // Max 3
+  performanceAnalysis: SectionAnalysis;
+  trustAnalysis: SectionAnalysis;
+  
+  // Premium Tier
+  conversionAnalysis: SectionAnalysis;
+  growthOpportunities: ActionableInsight[];
+  competitivePositioning: CompetitivePositioning;
+  priorityMatrix: PriorityMatrix;
+  thirtyDayActionPlan: ActionPlanWeek[];
+  ninetyDayRoadmap: ActionPlanWeek[];
+  evidenceLedger: EvidenceItem[];
 }
 
 // ─── Payment ──────────────────────────────────────────────────────────────────
@@ -384,6 +490,7 @@ export interface PartialReport {
     clarity: SectionInsight | null;
     conversion: SectionInsight | null;
   };
+  consultantReport?: ConsultantReport | null; // Phase 4 addition
   isPaid: boolean;
   createdAt: string;
   // Phase 0 metrics

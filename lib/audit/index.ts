@@ -22,29 +22,46 @@ export async function runAudit(request: AuditRequest): Promise<AuditRecord> {
   const { scrapedData, scrapeDiagnostics } = scraperResult;
   const scrapeEnd = performance.now();
 
-  // ── Phase 1: Classification ───────────────────────────────────────────────
+  // ── Phase 1A: Deterministic Classification ──────────────────────────────────
   const classStart = performance.now();
-  const classification = classifyWebsite(scrapedData);
+  const deterministicClassification = classifyWebsite(scrapedData);
   const classEnd = performance.now();
 
+  // ── Phase 1B: Website Understanding (AI Proposal) ────────────────────────
+  const wuStart = performance.now();
+  const { understandWebsite } = await import("./website-understanding");
+  const wuResult = await understandWebsite(scrapedData);
+  const websiteUnderstanding = wuResult.data;
+  const wuEnd = performance.now();
+  // ── Phase 1C: Classification Reconciliation ──────────────────────────────────
+  const { reconcileClassification } = await import("./classifier");
+  const classification = reconcileClassification(deterministicClassification, websiteUnderstanding, scrapeDiagnostics, wuResult.log);
+  
   // ── Phase 2: Category Audit ───────────────────────────────────────────────
   const catStart = performance.now();
   const { runCategoryAudit } = await import("./category-audits");
   const categoryAudit = runCategoryAudit(classification.websiteType, scrapedData);
   const catEnd = performance.now();
 
-  // ── Phase 3A: Website Understanding ────────────────────────────────────────
-  const wuStart = performance.now();
-  const { understandWebsite } = await import("./website-understanding");
-  const wuResult = await understandWebsite(scrapedData, classification.websiteType);
-  const websiteUnderstanding = wuResult.data;
-  const wuEnd = performance.now();
+  // ── Phase 3: Growth Intelligence ──────────────────────────────────────────
+  // Re-run website understanding if classification changed significantly, or use existing.
+  // Actually, we already have it from Phase 1B. Let's just use it.
 
-  // ── Phase 3B: Growth Engine ────────────────────────────────────────────────
+
   const geStart = performance.now();
   const { generateGrowthReport } = await import("./growth-engine");
   const geResult = await generateGrowthReport(websiteUnderstanding, categoryAudit.findings);
   const growthReport = geResult.data;
+  
+  const { generateConsultantReport } = await import("./consultant-engine");
+  const consultantReport = await generateConsultantReport(
+    calculateScores(scrapedData, pageSpeedData),
+    scrapedData,
+    scrapeDiagnostics,
+    classification,
+    websiteUnderstanding,
+    categoryAudit
+  );
   const geEnd = performance.now();
 
   // ── Screenshots (optional, non-blocking) ──────────────────────────────────
@@ -128,6 +145,7 @@ export async function runAudit(request: AuditRequest): Promise<AuditRecord> {
     categoryAudit,
     websiteUnderstanding,
     growthReport,
+    consultantReport,
     executionTiming,
     aiLogs,
     aiAvailable,

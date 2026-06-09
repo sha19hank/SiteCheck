@@ -2,8 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import { ScrapedData, WebsiteType, WebsiteUnderstanding, WebsiteUnderstandingResult } from "../../../types";
 
 export async function understandWebsite(
-  data: ScrapedData,
-  websiteType: WebsiteType
+  data: ScrapedData
 ): Promise<WebsiteUnderstandingResult> {
   const prompt = `
 You are a master business analyst and conversion rate optimization expert.
@@ -23,7 +22,8 @@ Has E-commerce Elements (Cart/Checkout): ${data.ctaTexts?.some(t => t.toLowerCas
 Return ONLY a valid JSON object matching this schema exactly, with NO markdown formatting, NO backticks, NO explanations.
 
 {
-  "websiteType": "${websiteType}",
+  "proposedWebsiteType": "string (MUST BE EXACTLY ONE OF: saas, ecommerce, agency, creator, blog, local_business, marketplace, nonprofit, community, portfolio, or other)",
+  "platformType": "string (e.g., Developer Platform, Design Platform, Website Platform, Productivity Platform, Creator Platform, Media Platform, or N/A)",
   "businessModel": "string (e.g., B2B SaaS, D2C Ecommerce, Local Service Provider, Creator/Influencer, Enterprise Agency)",
   "primaryGoal": "string (e.g., Lead Generation, Direct Sales, Audience Building, Brand Awareness)",
   "targetAudience": "string (e.g., Enterprise IT Buyers, Expecting Mothers, Local Homeowners, Independent Developers)",
@@ -67,9 +67,24 @@ Return ONLY a valid JSON object matching this schema exactly, with NO markdown f
     };
   } catch (error: any) {
     console.error("Website Understanding AI generation failed:", error);
+    let aiStatus: import("../../../types").AiStatus = "AI_ERROR";
+    const errorMessage = error.message || "";
+    
+    if (errorMessage.includes("429") || errorMessage.includes("RATE_LIMITED") || errorMessage.includes("exhausted")) {
+      aiStatus = "AI_QUOTA_EXCEEDED";
+    } else if (errorMessage.includes("503") || errorMessage.includes("unavailable") || errorMessage.includes("high demand")) {
+      aiStatus = "AI_RATE_LIMITED";
+    } else if (errorMessage.includes("API key not valid") || errorMessage.includes("INVALID_API_KEY") || errorMessage.includes("400")) {
+      aiStatus = "AI_DISABLED";
+    } else if (errorMessage.includes("timeout")) {
+      aiStatus = "AI_TIMEOUT";
+    }
+
     return {
       data: {
-        websiteType: websiteType,
+        proposedWebsiteType: "unknown",
+        platformType: "Unknown",
+        websiteType: "unknown",
         businessModel: "Unknown Business",
         primaryGoal: "Conversion",
         targetAudience: "General Audience",
@@ -84,8 +99,9 @@ Return ONLY a valid JSON object matching this schema exactly, with NO markdown f
         step: "website_understanding",
         status: "Failed",
         fallbackUsed: true,
-        errorReason: error.message,
+        errorReason: errorMessage,
         rawResponse: rawResponse,
+        aiStatus
       }
     };
   }

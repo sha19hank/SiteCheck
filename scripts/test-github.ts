@@ -61,7 +61,7 @@ async function run() {
   const categoryAudit = runCategoryAudit(classification.websiteType, githubData);
 
   console.log("\n=== 4. Website Understanding (Phase 3A) ===");
-  const wuResult = await understandWebsite(githubData, classification.websiteType);
+  const wuResult = await understandWebsite(githubData);
   const websiteUnderstanding = wuResult.data;
   console.log("Business Model:", websiteUnderstanding.businessModel);
   console.log("Target Audience:", websiteUnderstanding.targetAudience);
