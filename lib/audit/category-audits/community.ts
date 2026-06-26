@@ -1,7 +1,7 @@
-import { ScrapedData, CategoryAudit, CategoryFinding, CategoryRecommendation } from "@/types";
+import { ScrapedData, CategoryAudit, CanonicalFinding, CategoryRecommendation } from "@/types";
 
 export function runCommunityAudit(data: ScrapedData): CategoryAudit {
-  const findings: CategoryFinding[] = [];
+  const findings: CanonicalFinding[] = [];
   const recommendations: CategoryRecommendation[] = [];
   const strengths: string[] = [];
   const weaknesses: string[] = [];

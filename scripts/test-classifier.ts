@@ -110,7 +110,12 @@ console.log("=== RUNNING CATEGORY AUDIT TESTS ===\n");
 for (const test of tests) {
   console.log(`\n=== Testing: ${test.name} ===`);
   const classification = classifyWebsite(test.data);
-  const audit = runCategoryAudit(classification.websiteType, test.data);
+  console.log("\n[4/5] Testing Website Understanding...");
+  const { understandWebsite } = await import("@/lib/audit/website-understanding");
+  const understandingResult = await understandWebsite(test.data, undefined);
+  const { calculateScores } = await import("@/lib/audit/scorer");
+  const scores = calculateScores(test.data, { performanceScore: 90, lcp: 2.5, fcp: 1.5, cls: 0.05, speedIndex: 2.0, mobileScore: 0.9, imageOptimizationScore: 0.9, renderBlockingResources: 1, ttfb: 0.5, hasImages: true, passed: true });
+  const audit = runCategoryAudit(classification.websiteType, test.data, scores);
   
   console.log(`Detected Website Type: ${audit.websiteType} (Expected: ${test.expected})`);
   console.log(`Health Grade: ${audit.healthGrade}`);

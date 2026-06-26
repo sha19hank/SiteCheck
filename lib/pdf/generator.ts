@@ -269,13 +269,13 @@ function ReportDocument({ report, shareToken }: { report: PartialReport; shareTo
           ...issues.slice(0, 4).map((f, i) =>
             React.createElement(View, { key: i, style: S.findingRow },
               React.createElement(View, { style: [S.dot, { backgroundColor: f.severity === "critical" ? "#f43f5e" : "#f59e0b" }] as ReturnType<typeof StyleSheet.create>[string][] }),
-              React.createElement(Text, { style: S.findingText }, insight.improvements[i] ?? f.check.replace(/_/g, " "))
+              React.createElement(Text, { style: S.findingText }, insight.improvements[i] ?? (f.title || f.id.replace(/_/g, " ")))
             )
           ),
           ...passing.slice(0, 2).map((f, i) =>
             React.createElement(View, { key: `p${i}`, style: S.findingRow },
               React.createElement(View, { style: [S.dot, { backgroundColor: "#10b981" }] as ReturnType<typeof StyleSheet.create>[string][] }),
-              React.createElement(Text, { style: S.findingText }, insight.positives[i] ?? f.check.replace(/_/g, " "))
+              React.createElement(Text, { style: S.findingText }, insight.positives[i] ?? (f.title || f.id.replace(/_/g, " ")))
             )
           )
         );

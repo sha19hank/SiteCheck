@@ -1,23 +1,19 @@
 import { GoogleGenAI } from "@google/genai";
-import { CategoryFinding, WebsiteUnderstanding, GrowthReport, GrowthReportResult } from "../../../types";
+import { CanonicalFinding, WebsiteUnderstanding, GrowthReport, GrowthReportResult } from "../../../types";
 
 export async function generateGrowthReport(
   understanding: WebsiteUnderstanding,
-  findings: CategoryFinding[]
+  findings: CanonicalFinding[]
 ): Promise<GrowthReportResult> {
   // Only process high and medium severity findings to focus on true growth levers
   const actionableFindings = findings.filter(f => f.severity === "high" || f.severity === "medium").slice(0, 8);
 
   const prompt = `
-You are a Growth Consultant. 
-We have already run deterministic audits on a website and inferred its business model.
-
-### BUSINESS CONTEXT (From AI Understanding):
-- Business Model: ${understanding.businessModel}
-- Target Audience: ${understanding.targetAudience}
+You are a Growth Marketer analyzing an automated website audit for a ${understanding.businessModel} business.
+Target Audience: ${understanding.targetAudience}
+Value Proposition: ${understanding.valuePropositionRaw}
 - Primary Goal: ${understanding.primaryGoal}
 - Monetization Model: ${understanding.monetizationModel}
-- Value Proposition: ${understanding.valueProposition}
 
 ### DETERMINISTIC FINDINGS (From Rule-based Audit):
 ${actionableFindings.map((f, i) => `

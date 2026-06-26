@@ -37,45 +37,72 @@ function ShareButton({ token }: { token: string }) {
   );
 }
 
-// ─── PDF download button ──────────────────────────────────────────────────────
 function PDFButton({ auditId, isPaid }: { auditId: string; isPaid: boolean }) {
-  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState<"idle" | "generating" | "downloading" | "complete">("idle");
 
   async function download() {
-    if (!isPaid) return;
-    setLoading(true);
+    setStatus("generating");
     try {
       const res = await fetch(`/api/pdf/${auditId}`);
-      if (!res.ok) throw new Error("PDF failed");
+      if (!res.ok) {
+        let msg = "PDF Export failed.";
+        try {
+          const errData = await res.json();
+          msg = `Error [${errData.stage || "UNKNOWN"}]: ${errData.reason || "Server error"}`;
+        } catch(e) {}
+        throw new Error(msg);
+      }
+      
+      setStatus("downloading");
       const blob = await res.blob();
       const url  = URL.createObjectURL(blob);
+      
+      // Try to get filename from server
+      const disposition = res.headers.get("Content-Disposition");
+      let filename = isPaid ? `sitecheck-report.pdf` : `sitecheck-preview.pdf`;
+      if (disposition && disposition.includes('filename="')) {
+        filename = disposition.split('filename="')[1].split('"')[0];
+      }
+      
       const a    = document.createElement("a");
       a.href     = url;
-      a.download = `sitecheck-report.pdf`;
+      a.download = filename;
       a.click();
       URL.revokeObjectURL(url);
-    } catch (err) {
+      
+      setStatus("complete");
+      setTimeout(() => setStatus("idle"), 2000);
+    } catch (err: any) {
       console.error("PDF download error:", err);
-    } finally {
-      setLoading(false);
+      alert(err.message);
+      setStatus("idle");
     }
   }
 
-  if (!isPaid) return null;
-
   return (
-    <button onClick={download} disabled={loading} className="btn-ghost gap-1.5 text-xs h-8 px-3">
-      {loading ? (
+    <button onClick={download} disabled={status !== "idle"} className="btn-ghost gap-1.5 text-xs h-8 px-3">
+      {status === "generating" || status === "downloading" ? (
         <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none">
           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+        </svg>
+      ) : status === "complete" ? (
+        <svg viewBox="0 0 16 16" fill="currentColor" className="w-3.5 h-3.5 text-emerald-600">
+          <path fillRule="evenodd" d="M13.78 4.22a.75.75 0 010 1.06l-7.25 7.25a.75.75 0 01-1.06 0L2.22 9.28a.75.75 0 011.06-1.06L6 10.94l6.72-6.72a.75.75 0 011.06 0z" clipRule="evenodd"/>
+        </svg>
+      ) : !isPaid ? (
+        <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5 text-slate-500">
+          <path fillRule="evenodd" d="M10 2a5 5 0 00-5 5v2a2 2 0 00-2 2v5a2 2 0 002 2h10a2 2 0 002-2v-5a2 2 0 00-2-2H5V7a3 3 0 015.73-1.066A1 1 0 1012.47 5.1A5.002 5.002 0 0010 2z" clipRule="evenodd"/>
         </svg>
       ) : (
         <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
           <path fillRule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clipRule="evenodd"/>
         </svg>
       )}
-      {loading ? "Generating…" : "PDF"}
+      {status === "generating" ? "Generating..." 
+        : status === "downloading" ? "Downloading..." 
+        : status === "complete" ? "Complete"
+        : isPaid ? "Download PDF" : "Download Preview"}
     </button>
   );
 }
@@ -171,6 +198,13 @@ function ReportContent() {
   const [showPayment,  setShowPayment]  = useState(false);
   const [justUnlocked, setJustUnlocked] = useState(false);
   const [debugData,    setDebugData]    = useState<any>(null);
+  const [isPrintMode,  setIsPrintMode]  = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setIsPrintMode(new URLSearchParams(window.location.search).get("print") === "true");
+    }
+  }, []);
 
   const fetchReport = useCallback(() => {
     fetch(`/api/audit/${token}`)
@@ -226,7 +260,7 @@ function ReportContent() {
 
   return (
     <>
-      {showPayment && (
+      {showPayment && !isPrintMode && (
         <PaymentModal
           auditId={auditId}
           domain={domain}
@@ -246,9 +280,9 @@ function ReportContent() {
         </div>
       )}
 
-      <div className="min-h-screen pb-24">
+      <div className="min-h-screen pb-24 print:pb-0">
         {/* ── Sticky top bar ──────────────────────────────────────────────── */}
-        <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-surface-200/60 shadow-[0_1px_0_0_rgba(0,0,0,0.04)]">
+        <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-surface-200/60 shadow-[0_1px_0_0_rgba(0,0,0,0.04)] print:hidden">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-3">
             <Link href="/" className="shrink-0 flex items-center gap-2 mr-1">
               <div className="w-6 h-6 rounded-md bg-brand-gradient flex items-center justify-center">
@@ -360,22 +394,40 @@ function ReportContent() {
           <div className="animate-fade-up fill-both delay-300">
             <h2 className="text-sm font-semibold text-surface-900 mb-4">Detailed analysis</h2>
             <div className="space-y-3">
-              {(["performance","trust","clarity","conversion"] as const).map(dim => (
-                <SectionInsightCard
-                  key={dim}
-                  dimension={dim}
-                  score={scores[dim]}
-                  insight={sectionInsights[dim]}
-                  locked={!isPaid && (dim === "clarity" || dim === "conversion")}
-                  onUnlock={() => setShowPayment(true)}
-                />
-              ))}
+              <SectionInsightCard
+                insight={sectionInsights.performance}
+                score={scores.performance}
+                dimension="performance"
+                forceExpanded={isPrintMode}
+              />
+              <SectionInsightCard
+                insight={sectionInsights.trust}
+                score={scores.trust}
+                dimension="trust"
+                forceExpanded={isPrintMode}
+              />
+              <SectionInsightCard
+                insight={sectionInsights.clarity}
+                score={scores.clarity}
+                dimension="clarity"
+                locked={!isPaid}
+                onUnlock={() => setShowPayment(true)}
+                forceExpanded={isPrintMode}
+              />
+              <SectionInsightCard
+                insight={sectionInsights.conversion}
+                score={scores.conversion}
+                dimension="conversion"
+                locked={!isPaid}
+                onUnlock={() => setShowPayment(true)}
+                forceExpanded={isPrintMode}
+              />
             </div>
           </div>
 
           {/* ── Unlock CTA ────────────────────────────────────────────────── */}
           {!isPaid && (
-            <div className="animate-fade-up fill-both delay-400 card p-8 sm:p-10 border-brand-200 bg-gradient-to-br from-brand-50/50 via-white to-white text-center sm:text-left relative overflow-hidden mt-4">
+            <div className="animate-fade-up fill-both delay-400 card p-8 sm:p-10 border-brand-200 bg-gradient-to-br from-brand-50/50 via-white to-white text-center sm:text-left relative overflow-hidden mt-4 print:hidden">
               <div className="absolute top-0 right-0 p-8 opacity-5 pointer-events-none">
                 <svg viewBox="0 0 24 24" fill="currentColor" className="w-48 h-48 text-brand-900">
                   <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
@@ -403,15 +455,18 @@ function ReportContent() {
             </div>
           )}
 
-          <div className="flex items-center justify-between pt-4 pb-2">
+          <div className="flex items-center justify-between pt-4 pb-2 print:hidden">
             <Link href="/" className="btn-ghost text-xs">← Audit another website</Link>
             <p className="text-xs text-surface-300">
               Powered by <Link href="/" className="hover:text-surface-500 transition-colors">SiteCheck AI</Link>
             </p>
           </div>
 
+          {/* Debug Panel Content */}
           {process.env.NODE_ENV === "development" && debugData && (
-            <DebugPanel data={debugData} scores={scores} />
+            <div className="print:hidden">
+              <DebugPanel data={debugData} scores={scores} />
+            </div>
           )}
         </main>
       </div>

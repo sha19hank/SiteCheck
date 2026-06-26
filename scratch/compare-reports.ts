@@ -2,6 +2,8 @@ import { classifyWebsite } from "../lib/audit/classifier";
 import { runCategoryAudit } from "../lib/audit/category-audits";
 import { understandWebsite } from "../lib/audit/website-understanding";
 import { generateGrowthReport } from "../lib/audit/growth-engine";
+import { generateConsultantReport } from "../lib/audit/consultant-engine";
+import { calculateScores } from "../lib/audit/scorer";
 import { ScrapedData, PageType } from "../types";
 import * as fs from "fs";
 
@@ -17,7 +19,6 @@ try {
   // ignore
 }
 
-// Mocking some common elements on github.com
 const githubData: ScrapedData = {
   title: "GitHub: Let's build from here · GitHub",
   metaDescription: "GitHub is where over 100 million developers shape the future of software, together. Contribute to the open source community, manage your Git repositories, review code like a pro, track bugs and features, power your CI/CD and DevOps workflows, and secure code before you commit it.",
@@ -52,28 +53,70 @@ const githubData: ScrapedData = {
 };
 
 async function run() {
-  console.log("=== CLASSIFIER AUDIT: GITHUB.COM ===\n");
+  console.log("Running comparative audit...");
+  
   const classification = classifyWebsite(githubData);
-  console.log(`Detected Type: ${classification.websiteType}`);
-  console.log(`Confidence: ${classification.confidence.toFixed(2)}\n`);
-
-  console.log("=== PHASE 2: CATEGORY AUDIT ===\n");
-  const { calculateScores } = await import("../lib/audit/scorer");
   const scores = calculateScores(githubData, { performanceScore: 90, lcp: 2.5, fcp: 1.5, cls: 0.05, speedIndex: 2.0, mobileScore: 0.9, imageOptimizationScore: 0.9, renderBlockingResources: 1, ttfb: 0.5, hasImages: true, passed: true });
   const categoryAudit = runCategoryAudit(classification.websiteType, githubData, scores);
-
-  console.log("\n=== 4. Website Understanding (Phase 3A) ===");
+  
   const wuResult = await understandWebsite(githubData, classification);
   const websiteUnderstanding = wuResult.data;
-  console.log("Business Model:", websiteUnderstanding.businessModel);
-  console.log("Target Audience:", websiteUnderstanding.targetAudience);
-  console.log("Primary Goal:", websiteUnderstanding.primaryGoal);
-  console.log("Value Proposition:", websiteUnderstanding.valuePropositionNormalized);
 
-  console.log("\n=== 5. Growth Intelligence Engine (Phase 3B) ===");
+  // Generate Old Growth Report
   const geResult = await generateGrowthReport(websiteUnderstanding, categoryAudit.findings);
-  const growthReport = geResult.data;
-  console.log("Readiness Score:", growthReport.readinessScore);
+  const oldReport = geResult.data;
+
+  // Generate New Consultant Report
+  const newReport = await generateConsultantReport(
+    scores,
+    githubData,
+    { scrapeSuccess: true, scrapeQuality: "HIGH" } as any,
+    classification,
+    websiteUnderstanding,
+    categoryAudit,
+    { level: "HIGH", metrics: { evidenceCoverage: 0.8, understandingCompleteness: 1, scrapeQuality: "HIGH", classificationConfidence: 0.95 } }
+  );
+
+  fs.writeFileSync(
+    "scratch/github_comparison.md",
+    `# Premium Value Audit Comparison: GitHub
+
+## Old Growth Report (Legacy)
+### Readiness Score: ${oldReport?.readinessScore ?? "N/A"}/100
+
+### Top Insights:
+${oldReport?.insights?.map((i: any) => `- **${i.title}** (${i.impact} impact)\n  - Finding: ${i.findingContext}\n  - Why It Matters: ${i.whyItMatters}\n  - Recommendation: ${i.recommendedAction}`).join("\n\n")}
+
+---
+
+## New Consultant Report (Premium)
+### Confidence: ${newReport.reportConfidence.level} (${newReport.reportConfidence.explanation})
+
+### Consultant Summary:
+${newReport.executiveSummary}
+
+### Top Quick Wins:
+${newReport.topQuickWins?.map((w: any) => `- **${w.problem}** (${w.priority})\n  - Why It Matters: ${w.whyItMatters}\n  - How To Fix: ${w.recommendedFix}`).join("\n\n")}
+
+### Section Insights:
+#### Performance
+- Score: ${newReport.performanceAnalysis.score}
+- Improvements: ${newReport.performanceAnalysis.recommendedActions.join(", ")}
+
+#### Trust
+- Score: ${newReport.trustAnalysis.score}
+- Improvements: ${newReport.trustAnalysis.recommendedActions.join(", ")}
+
+#### Conversion
+- Score: ${newReport.conversionAnalysis.score}
+- Improvements: ${newReport.conversionAnalysis.recommendedActions.join(", ")}
+
+### Evidence Ledger (Traceability):
+${newReport.evidenceLedger?.map((e: any) => `- [${e.source}] ${e.finding} (${e.impact})`).join("\n")}
+`
+  );
+
+  console.log("Comparison generated at scratch/github_comparison.md");
 }
 
 run().catch(console.error);

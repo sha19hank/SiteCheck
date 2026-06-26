@@ -1,8 +1,8 @@
-import { ScrapedData, CategoryAudit, CategoryFinding, CategoryRecommendation } from "@/types";
+import { ScrapedData, CategoryAudit, CanonicalFinding, CategoryRecommendation } from "@/types";
 import { CHECK_LOCAL_CONTACT, CHECK_TESTIMONIALS } from "../check-registry";
 
 export function runLocalBusinessAudit(data: ScrapedData): CategoryAudit {
-  const findings: CategoryFinding[] = [];
+  const findings: CanonicalFinding[] = [];
   const recommendations: CategoryRecommendation[] = [];
   const strengths: string[] = [];
   const weaknesses: string[] = [];

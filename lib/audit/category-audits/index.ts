@@ -1,4 +1,4 @@
-import { ScrapedData, CategoryAudit, WebsiteType } from "@/types";
+import { ScrapedData, CategoryAudit, WebsiteType, AuditScores } from "@/types";
 import { runSaaSAudit } from "./saas";
 import { runEcommerceAudit } from "./ecommerce";
 import { runAgencyAudit } from "./agency";
@@ -25,7 +25,30 @@ const AUDIT_RUNNERS: Record<WebsiteType, (data: ScrapedData) => CategoryAudit> =
   unknown: runOtherAudit
 };
 
-export function runCategoryAudit(websiteType: WebsiteType, data: ScrapedData): CategoryAudit {
+export function runCategoryAudit(websiteType: WebsiteType, data: ScrapedData, scores: AuditScores): CategoryAudit {
   const runner = AUDIT_RUNNERS[websiteType] || runOtherAudit;
-  return runner(data);
+  const audit = runner(data);
+
+  // ── Merge Base Findings ──────────────────────────────────────────────────
+  const baseFindings = [
+    ...scores.performance.findings,
+    ...scores.trust.findings,
+    ...scores.clarity.findings,
+    ...scores.conversion.findings
+  ];
+
+  audit.findings = [...audit.findings, ...baseFindings];
+
+  // ── Source of Truth ──────────────────────────────────────────────────────
+  // The CategoryAudit overallScore should be aligned with the deterministic scores.
+  // We use the calculated scores from scorer.ts as the definitive source.
+  audit.overallScore = scores.overall;
+  audit.categoryScores = {
+    performance: scores.performance.score,
+    trust: scores.trust.score,
+    clarity: scores.clarity.score,
+    conversion: scores.conversion.score
+  };
+
+  return audit;
 }

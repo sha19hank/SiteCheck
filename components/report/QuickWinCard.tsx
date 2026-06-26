@@ -21,7 +21,7 @@ export default function QuickWinCard({ win, rank, delay = 0 }: QuickWinCardProps
 
   return (
     <div
-      className="card p-5 sm:p-6 animate-fade-up opacity-0-init"
+      className="card p-5 sm:p-6 animate-fade-up opacity-0-init print:break-inside-avoid"
       style={{ animationDelay: `${delay}ms`, animationFillMode: "forwards" }}
     >
       <div className="flex items-start gap-4">

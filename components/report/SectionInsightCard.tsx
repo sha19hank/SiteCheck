@@ -45,12 +45,14 @@ interface SectionInsightCardProps {
   dimension:   string;
   locked?:     boolean;
   onUnlock?:   () => void;
+  forceExpanded?: boolean;
 }
 
 export default function SectionInsightCard({
-  insight, score, dimension, locked = false, onUnlock,
+  insight, score, dimension, locked = false, onUnlock, forceExpanded = false
 }: SectionInsightCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const isExpanded = expanded || forceExpanded;
   const color = scoreToHex(score.score);
   const label = scoreToLabel(score.score);
   const dimLabel = dimension.charAt(0).toUpperCase() + dimension.slice(1);
@@ -62,7 +64,7 @@ export default function SectionInsightCard({
   const isEffectivelyLocked = locked && !isDevUnlocked;
 
   return (
-    <div className="card overflow-hidden">
+    <div className="card overflow-hidden print:break-inside-avoid">
       {/* Header — always visible */}
       <button
         className={cn(
@@ -77,7 +79,7 @@ export default function SectionInsightCard({
             setExpanded(!expanded);
           }
         }}
-        aria-expanded={isEffectivelyLocked ? false : expanded}
+        aria-expanded={isEffectivelyLocked ? false : isExpanded}
       >
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg flex items-center justify-center" style={{ background: `${color}15`, color }}>
@@ -111,7 +113,7 @@ export default function SectionInsightCard({
               <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd"/>
             </svg>
           ) : (
-            <svg viewBox="0 0 20 20" fill="currentColor" className={cn("w-4 h-4 text-surface-400 transition-transform duration-200", expanded && "rotate-180")}>
+            <svg viewBox="0 0 20 20" fill="currentColor" className={cn("w-4 h-4 text-surface-400 transition-transform duration-200", isExpanded && "rotate-180")}>
               <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd"/>
             </svg>
           )}
@@ -119,7 +121,7 @@ export default function SectionInsightCard({
       </button>
 
       {/* Body */}
-      {!isEffectivelyLocked && expanded && (
+      {!isEffectivelyLocked && isExpanded && (
         <div className="border-t border-surface-100 p-5 sm:p-6 space-y-5">
           {/* Summary */}
           {insight?.summary && (
@@ -134,15 +136,17 @@ export default function SectionInsightCard({
               </p>
               <div className="space-y-2.5">
                 {issues.map((f, i) => (
-                  <div key={i} className="flex items-start gap-3">
-                    <div className={cn("w-2 h-2 rounded-full shrink-0 mt-1.5", SEVERITY_DOT[f.severity])} />
-                    <div className="flex-1">
-                      <p className="text-sm text-surface-700">
-                        {insight?.improvements?.[i] ?? f.check.replace(/_/g, " ")}
-                      </p>
-                      {f.detail && (
-                        <p className="text-xs text-surface-400 mt-0.5 font-mono">{f.detail}</p>
-                      )}
+                  <div key={i} className="flex flex-col border border-slate-100 rounded bg-slate-50 p-3 space-y-1">
+                    <div className="flex gap-3">
+                      <div className={cn("w-2 h-2 rounded-full shrink-0 mt-1.5", SEVERITY_DOT[f.severity])} />
+                      <div>
+                        <p className="text-sm font-medium text-slate-800">
+                          {f.title ?? f.id.replace(/_/g, " ")}
+                        </p>
+                        {f.description && (
+                          <p className="text-xs text-slate-500 mt-0.5">{f.description}</p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -161,7 +165,7 @@ export default function SectionInsightCard({
                   <div key={i} className="flex items-start gap-3">
                     <div className="w-2 h-2 rounded-full shrink-0 mt-1.5 bg-emerald-500" />
                     <p className="text-sm text-surface-600">
-                      {insight?.positives?.[i] ?? f.check.replace(/_/g, " ")}
+                      {insight?.positives?.[i] ?? (f.title || f.id.replace(/_/g, " "))}
                     </p>
                   </div>
                 ))}
@@ -185,7 +189,7 @@ export default function SectionInsightCard({
                 : `Hidden ${dimension} insights and AI analysis`}
             </p>
           </div>
-          <span className="text-xs font-semibold text-brand-600 group-hover:text-brand-700 transition-colors shrink-0">
+          <span className="text-xs font-semibold text-brand-600 group-hover:text-brand-700 transition-colors shrink-0 print:hidden">
             Unlock to view →
           </span>
         </div>

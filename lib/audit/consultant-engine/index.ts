@@ -2,7 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import {
   AuditScores,
   CategoryAudit,
-  CategoryFinding,
+  CanonicalFinding,
   ConsultantReport,
   ScrapeDiagnostics,
   WebsiteClassification,
@@ -59,20 +59,19 @@ export async function generateConsultantReport(
   diagnostics: ScrapeDiagnostics,
   classification: WebsiteClassification,
   understanding: WebsiteUnderstanding,
-  categoryAudit: CategoryAudit
+  categoryAudit: CategoryAudit,
+  confidenceParams: {
+    level: "HIGH" | "MEDIUM" | "LOW";
+    metrics: { evidenceCoverage: number; understandingCompleteness: number; scrapeQuality: string; classificationConfidence: number };
+  }
 ): Promise<ConsultantReport> {
   
   // 1. Audit Limitations & Confidence
   const aiAvailable = classification.aiStatus === "AI_AVAILABLE";
   
-  let reportConfidenceLevel: "HIGH" | "MEDIUM" | "LOW" = "LOW";
-  if (diagnostics.scrapeQuality === "HIGH" && classification.confidenceTier === "HIGH") {
-    reportConfidenceLevel = "HIGH";
-  } else if (diagnostics.scrapeQuality === "HIGH" || classification.confidenceTier === "HIGH") {
-    reportConfidenceLevel = "MEDIUM";
-  }
-
-  const limitations = `We successfully analyzed the website with a ${diagnostics.scrapeQuality} quality scrape. AI assistance was ${aiAvailable ? "available" : `unavailable due to ${classification.aiStatus}`}. Recommendations are based on deterministic signals${aiAvailable ? " and enhanced by AI" : " only"}.`;
+  const reportConfidenceLevel = confidenceParams.level;
+  const metricsMsg = `Coverage: ${(confidenceParams.metrics.evidenceCoverage*100).toFixed(0)}% | Completeness: ${(confidenceParams.metrics.understandingCompleteness*100).toFixed(0)}% | Scrape: ${confidenceParams.metrics.scrapeQuality}`;
+  const limitations = `We successfully analyzed the website with a ${diagnostics.scrapeQuality} quality scrape. AI assistance was ${aiAvailable ? "available" : `unavailable due to ${classification.aiStatus}`}. Recommendations are based on deterministic signals.`;
 
   // 2. Build Insights from Findings
   const allInsights: ActionableInsight[] = [];
@@ -86,7 +85,7 @@ export async function generateConsultantReport(
     
     const insight: ActionableInsight = {
       problem: f.title || f.id || "Issue detected",
-      evidence: [f.description || `Detected in ${f.category} analysis`],
+      evidence: f.evidence && f.evidence.length > 0 ? f.evidence : [f.description || `Detected in ${f.category} analysis`],
       whyItMatters: getWhyItMatters(f.id, f.category),
       businessImpact: `Impacts ${f.category} metrics and overall growth readiness.`,
       recommendedFix: `Resolve the ${f.title} issue based on category best practices.`,
@@ -108,7 +107,21 @@ export async function generateConsultantReport(
   const mediumPriority = allInsights.filter(i => i.priority === "Medium");
   const lowPriority = allInsights.filter(i => i.priority === "Low");
 
+  // Task 7: Minimum of real findings, cap at 3
   const topQuickWins = [...highPriority, ...mediumPriority, ...lowPriority].slice(0, 3);
+
+  if (topQuickWins.length === 0) {
+    topQuickWins.push({
+      problem: "No critical quick wins identified",
+      evidence: ["Automated scans found no major friction points"],
+      whyItMatters: "Your foundation is solid.",
+      businessImpact: "Ready to scale traffic.",
+      recommendedFix: "Focus on top-of-funnel marketing.",
+      priority: "Low",
+      effort: "Low",
+      expectedOutcome: "Growth scale"
+    });
+  }
 
   // 3. Section Analysis
   const buildSection = (dimension: keyof AuditScores): SectionAnalysis => {
@@ -177,7 +190,8 @@ export async function generateConsultantReport(
   const baseReport: ConsultantReport = {
     reportConfidence: {
       level: reportConfidenceLevel,
-      explanation: `Confidence is ${reportConfidenceLevel} based on ${classification.confidenceTier} classification and ${diagnostics.scrapeQuality} scrape.`
+      explanation: `Confidence is ${reportConfidenceLevel} based on ${classification.confidenceTier} classification and ${diagnostics.scrapeQuality} scrape.`,
+      metrics: confidenceParams.metrics
     },
     auditLimitations: {
       text: limitations,

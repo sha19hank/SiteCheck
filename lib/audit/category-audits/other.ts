@@ -1,4 +1,4 @@
-import { ScrapedData, CategoryAudit, CategoryFinding, CategoryRecommendation } from "@/types";
+import { ScrapedData, CategoryAudit, CanonicalFinding, CategoryRecommendation } from "@/types";
 
 export function runOtherAudit(data: ScrapedData): CategoryAudit {
   return {

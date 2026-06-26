@@ -71,11 +71,13 @@ export async function GET(
       categoryAudit: data.category_audit,
       websiteUnderstanding: data.website_understanding,
       growthReport: data.growth_report,
+      consultantReport: data.consultant_report,
       aiAvailable: data.ai_available,
       fallbackUsed: data.fallback_used,
       aiFailureReasonCode: data.ai_failure_reason_code,
       aiFailureReasonMessage: data.ai_failure_reason_message,
       auditConfidence: data.audit_confidence,
+      consultantConfidence: data.consultant_report?.reportConfidence,
       scrapeDiagnostics: data.scrape_diagnostics,
       classifierInputPreview: {
         title: data.scraped_data?.title || null,

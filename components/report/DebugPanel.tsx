@@ -215,7 +215,7 @@ export default function DebugPanel({ data, scores }: DebugPanelProps) {
                   <div key={i} className="bg-slate-50 p-2 rounded border border-slate-100 flex gap-4">
                     <span className="font-bold text-indigo-500 w-24 shrink-0">[{f.category}]</span>
                     <span className={`font-bold w-16 shrink-0 ${f.severity === "high" || f.severity === "critical" ? "text-rose-500" : f.severity === "medium" ? "text-amber-500" : "text-emerald-500"}`}>{f.severity}</span>
-                    <span className="flex-1">{f?.detail || f?.title || (f?.check && typeof f.check === "string" ? f.check.replace(/_/g, " ") : "Unknown check")}</span>
+                    <span className="flex-1">{f?.title || f?.id || "Unknown finding"}</span>
                   </div>
                 ))}
               </div>
@@ -264,6 +264,54 @@ export default function DebugPanel({ data, scores }: DebugPanelProps) {
           </div>
         )}
 
+        {/* TAB: CONSULTANT */}
+        {activeTab === "consultant" && (
+          <div className="space-y-6">
+            <div className="bg-slate-900 p-4 rounded border border-slate-800 text-white mb-6">
+              <h3 className="font-bold text-lg mb-2">Confidence Diagnostics</h3>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <div className="text-slate-400 uppercase text-[10px]">Report Level</div>
+                  <div className="font-bold text-emerald-400">{data.consultantConfidence?.level || data.auditConfidence}</div>
+                </div>
+                <div>
+                  <div className="text-slate-400 uppercase text-[10px]">Classification</div>
+                  <div className="font-bold">{data.consultantConfidence?.metrics?.classificationConfidence?.toFixed(2) || "N/A"}</div>
+                </div>
+                <div>
+                  <div className="text-slate-400 uppercase text-[10px]">Evidence Coverage</div>
+                  <div className="font-bold">{data.consultantConfidence?.metrics?.evidenceCoverage !== undefined ? (data.consultantConfidence.metrics.evidenceCoverage * 100).toFixed(0) + "%" : "N/A"}</div>
+                </div>
+                <div>
+                  <div className="text-slate-400 uppercase text-[10px]">Understanding</div>
+                  <div className="font-bold">{data.consultantConfidence?.metrics?.understandingCompleteness !== undefined ? (data.consultantConfidence.metrics.understandingCompleteness * 100).toFixed(0) + "%" : "N/A"}</div>
+                </div>
+              </div>
+              <div className="mt-4 pt-4 border-t border-slate-700">
+                <p className="text-sm">{data.consultantConfidence?.explanation}</p>
+              </div>
+            </div>
+
+            {/* Evidence Ledger */}
+            {data.rawTab !== "consultant" && data.debugData?.consultantReport?.evidenceLedger ? (
+              <div className="bg-white p-4 rounded border border-slate-200">
+                <h3 className="font-bold text-sm mb-3 border-b pb-2">Evidence Ledger (Traceability)</h3>
+                <div className="space-y-3">
+                  {data.debugData.consultantReport.evidenceLedger.map((item: any, i: number) => (
+                    <div key={i} className="flex flex-col gap-1 text-sm bg-slate-50 p-2 rounded border border-slate-100">
+                      <div className="font-bold text-indigo-700">{item.finding}</div>
+                      <div className="flex justify-between text-xs text-slate-500">
+                        <span>Source: {item.source}</span>
+                        <span className="uppercase font-bold text-slate-700">{item.impact}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </div>
+        )}
+
         {/* TAB: SCORES */}
         {activeTab === "scores" && (
           <div className="space-y-6">
@@ -273,11 +321,10 @@ export default function DebugPanel({ data, scores }: DebugPanelProps) {
               
               // Calculate deductions and bonuses manually for display
               // We assume base is 100, and deductions are based on findings
-              let base = 100;
-              let deductions: { check: string; detail?: string; severity: string }[] = [];
-              let bonuses: { check: string; detail?: string; severity: string }[] = [];
+              let deductions: any[] = [];
+              let bonuses: any[] = [];
 
-              dimData.findings.forEach(f => {
+              dimData.findings.forEach((f: any) => {
                 if (f.severity === "pass") bonuses.push(f);
                 else deductions.push(f);
               });
@@ -295,10 +342,10 @@ export default function DebugPanel({ data, scores }: DebugPanelProps) {
                       <div className="text-rose-500 font-bold mb-1">Deductions</div>
                       <div className="space-y-1 pl-2 border-l-2 border-rose-200">
                         {deductions.map((d, i) => (
-                          <div key={i} className="flex gap-2">
+                          <div key={i} className="flex gap-2 text-xs">
                             <span className="text-rose-600 font-bold shrink-0">- pts</span>
-                            <span className="text-slate-700">{typeof d?.check === "string" ? d.check.replace(/_/g, ' ') : "Unknown check"}</span>
-                            {d.detail && <span className="text-slate-400">({d.detail})</span>}
+                            <span className="text-slate-700">{d?.title || d?.id}</span>
+                            {d.description && <span className="text-slate-400">({d.description})</span>}
                           </div>
                         ))}
                       </div>
@@ -310,9 +357,9 @@ export default function DebugPanel({ data, scores }: DebugPanelProps) {
                       <div className="text-emerald-500 font-bold mb-1">Bonuses / Passes</div>
                       <div className="space-y-1 pl-2 border-l-2 border-emerald-200">
                         {bonuses.map((b, i) => (
-                          <div key={i} className="flex gap-2">
+                          <div key={i} className="flex gap-2 text-xs">
                             <span className="text-emerald-600 font-bold shrink-0">+ pass</span>
-                            <span className="text-slate-700">{typeof b?.check === "string" ? b.check.replace(/_/g, ' ') : "Unknown check"}</span>
+                            <span className="text-slate-700">{b?.title || b?.id}</span>
                           </div>
                         ))}
                       </div>

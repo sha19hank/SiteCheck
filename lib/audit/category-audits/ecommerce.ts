@@ -1,8 +1,8 @@
-import { ScrapedData, CategoryAudit, CategoryFinding, CategoryRecommendation } from "@/types";
+import { ScrapedData, CategoryAudit, CanonicalFinding, CategoryRecommendation } from "@/types";
 import { CHECK_SHIPPING_INFO, CHECK_RETURN_POLICY, CHECK_CART_VISIBILITY, CHECK_TESTIMONIALS } from "../check-registry";
 
 export function runEcommerceAudit(data: ScrapedData): CategoryAudit {
-  const findings: CategoryFinding[] = [];
+  const findings: CanonicalFinding[] = [];
   const recommendations: CategoryRecommendation[] = [];
   const strengths: string[] = [];
   const weaknesses: string[] = [];

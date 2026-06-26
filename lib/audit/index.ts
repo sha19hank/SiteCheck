@@ -30,17 +30,20 @@ export async function runAudit(request: AuditRequest): Promise<AuditRecord> {
   // ── Phase 1B: Website Understanding (AI Proposal) ────────────────────────
   const wuStart = performance.now();
   const { understandWebsite } = await import("./website-understanding");
-  const wuResult = await understandWebsite(scrapedData);
+  const wuResult = await understandWebsite(scrapedData, deterministicClassification);
   const websiteUnderstanding = wuResult.data;
   const wuEnd = performance.now();
   // ── Phase 1C: Classification Reconciliation ──────────────────────────────────
   const { reconcileClassification } = await import("./classifier");
   const classification = reconcileClassification(deterministicClassification, websiteUnderstanding, scrapeDiagnostics, wuResult.log);
   
+  // ── Layer 2: Deterministic scoring (Base Findings) ────────────────────────
+  const scores = calculateScores(scrapedData, pageSpeedData);
+
   // ── Phase 2: Category Audit ───────────────────────────────────────────────
   const catStart = performance.now();
   const { runCategoryAudit } = await import("./category-audits");
-  const categoryAudit = runCategoryAudit(classification.websiteType, scrapedData);
+  const categoryAudit = runCategoryAudit(classification.websiteType, scrapedData, scores);
   const catEnd = performance.now();
 
   // ── Phase 3: Growth Intelligence ──────────────────────────────────────────
@@ -53,14 +56,30 @@ export async function runAudit(request: AuditRequest): Promise<AuditRecord> {
   const geResult = await generateGrowthReport(websiteUnderstanding, categoryAudit.findings);
   const growthReport = geResult.data;
   
+  // Calculate audit confidence here so it can be passed to Consultant Report
+  const evidenceCoverage = (categoryAudit.findings.length > 0) ? categoryAudit.findings.filter(f => f.evidence && f.evidence.length > 0).length / categoryAudit.findings.length : 0;
+  const understandingCompleteness = (websiteUnderstanding.businessModel !== "Unknown" && websiteUnderstanding.targetAudience !== "General Audience") ? 1 : 0.5;
+  
+  let auditConfidence: "HIGH" | "MEDIUM" | "LOW" = "HIGH";
+  
+  if (!scrapeDiagnostics.scrapeSuccess || classification.confidence < 0.40 || evidenceCoverage < 0.3) {
+    auditConfidence = "LOW";
+  } else if (classification.confidence < 0.75 || scrapeDiagnostics.scrapeQuality === "MEDIUM" || evidenceCoverage < 0.7 || understandingCompleteness < 1) {
+    auditConfidence = "MEDIUM";
+  }
+
   const { generateConsultantReport } = await import("./consultant-engine");
   const consultantReport = await generateConsultantReport(
-    calculateScores(scrapedData, pageSpeedData),
+    scores,
     scrapedData,
     scrapeDiagnostics,
     classification,
     websiteUnderstanding,
-    categoryAudit
+    categoryAudit,
+    {
+      level: auditConfidence,
+      metrics: { evidenceCoverage, understandingCompleteness, scrapeQuality: scrapeDiagnostics.scrapeQuality, classificationConfidence: classification.confidence }
+    }
   );
   const geEnd = performance.now();
 
@@ -75,9 +94,6 @@ export async function runAudit(request: AuditRequest): Promise<AuditRecord> {
       console.warn("Screenshot capture skipped:", err);
     }
   }
-
-  // ── Layer 2: Deterministic scoring ─────────────────────────────────────────
-  const scores = calculateScores(scrapedData, pageSpeedData);
 
   // ── Layer 3: AI explanation (industry-aware) [LEGACY SIDE-BY-SIDE] ──────────
   const aiReport = await generateAIReport(
@@ -123,12 +139,7 @@ export async function runAudit(request: AuditRequest): Promise<AuditRecord> {
   }
 
   // Calculate audit confidence
-  let auditConfidence: "HIGH" | "MEDIUM" | "LOW" = "HIGH";
-  if (!scrapeDiagnostics.scrapeSuccess || !aiAvailable || classification.confidence < 0.40) {
-    auditConfidence = "LOW";
-  } else if (classification.confidence < 0.75 || scrapeDiagnostics.scrapeQuality === "MEDIUM") {
-    auditConfidence = "MEDIUM";
-  }
+  // (already calculated above to pass to Consultant Engine)
 
   return {
     id:             crypto.randomUUID(),

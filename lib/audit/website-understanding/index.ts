@@ -1,12 +1,75 @@
 import { GoogleGenAI } from "@google/genai";
-import { ScrapedData, WebsiteType, WebsiteUnderstanding, WebsiteUnderstandingResult } from "../../../types";
+import { ScrapedData, WebsiteType, WebsiteUnderstanding, WebsiteUnderstandingResult, WebsiteClassification } from "../../../types";
 
 export async function understandWebsite(
-  data: ScrapedData
+  data: ScrapedData,
+  classification?: WebsiteClassification // Phase 1A classification
 ): Promise<WebsiteUnderstandingResult> {
+  
+  // ─── Deterministic Extraction (Phase 4.5) ──────────────────────────────────
+  
+  // Value Proposition Extraction (Priority: Meta > OG > Hero > H1+H2)
+  let rawVP = "";
+  if (data.metaDescription && data.metaDescription.length > 20) {
+    rawVP = data.metaDescription;
+  } else if (data.h1s && data.h1s.length > 0) {
+    rawVP = data.h1s[0];
+    if (data.h2s && data.h2s.length > 0) {
+      rawVP += " - " + data.h2s[0];
+    }
+  } else {
+    rawVP = "Could not deterministically extract value proposition.";
+  }
+
+  // Audience & Business Model inferred from Classification
+  const baseType = classification?.websiteType || "unknown";
+  let targetAudience = "General Audience";
+  let businessModel = "Unknown";
+  let monetizationModel = "Unknown";
+  
+  if (baseType === "saas") {
+    businessModel = "Software as a Service (B2B/B2C)";
+    monetizationModel = data.hasPricing ? "Subscription Tiered" : "Enterprise / Custom Pricing";
+    targetAudience = "Businesses and Professionals";
+  } else if (baseType === "ecommerce") {
+    businessModel = "Direct to Consumer (D2C)";
+    monetizationModel = "One-time Purchase";
+    targetAudience = "Consumers";
+  } else if (baseType === "creator") {
+    businessModel = "Creator / Influencer";
+    monetizationModel = "Sponsorships, Infoproducts, or Community";
+    targetAudience = "Fans and Followers";
+  } else if (baseType === "agency") {
+    businessModel = "Service Provider / Agency";
+    monetizationModel = "Services (Retainer or Project)";
+    targetAudience = "Businesses needing services";
+  } else if (baseType === "local_business") {
+    businessModel = "Local Service Business";
+    monetizationModel = "Services (In-person)";
+    targetAudience = "Local Residents/Businesses";
+  }
+  
+  const deterministicFallback: WebsiteUnderstanding = {
+    proposedWebsiteType: baseType,
+    platformType: classification?.platformType || "N/A",
+    websiteType: baseType,
+    businessModel,
+    primaryGoal: data.hasPricing ? "Direct Sales/Conversion" : (data.hasContactForm ? "Lead Generation" : "Brand Awareness"),
+    targetAudience,
+    pagePurpose: "Homepage / Landing Page",
+    monetizationModel,
+    valuePropositionRaw: rawVP,
+    valuePropositionNormalized: rawVP,
+    customerJourneyStage: "Awareness / Consideration",
+    confidence: 0.5,
+    evidence: ["Extracted deterministically from metadata, H1s, and classification."]
+  };
+
+  // ─── AI Cleanup ─────────────────────────────────────────────────────────────
+
   const prompt = `
 You are a master business analyst and conversion rate optimization expert.
-Analyze the following scraped website data to understand the underlying business model, target audience, and primary goals.
+Analyze the following scraped website data to clean up and normalize the value proposition, and infer the deeper business model and target audience.
 
 ### SCRAPED DATA:
 Title: ${data.title || "N/A"}
@@ -16,7 +79,8 @@ H2s: ${(data.h2s || []).slice(0, 10).join(" | ")}
 CTAs: ${(data.ctaTexts || []).join(" | ")}
 Has Pricing: ${data.hasPricing}
 Has Contact Form: ${data.hasContactForm}
-Has E-commerce Elements (Cart/Checkout): ${data.ctaTexts?.some(t => t.toLowerCase().includes("cart") || t.toLowerCase().includes("checkout")) ? "Yes" : "No"}
+Deterministic Base Type: ${baseType}
+Deterministic Raw Value Prop: ${rawVP}
 
 ### INSTRUCTIONS:
 Return ONLY a valid JSON object matching this schema exactly, with NO markdown formatting, NO backticks, NO explanations.
@@ -29,7 +93,8 @@ Return ONLY a valid JSON object matching this schema exactly, with NO markdown f
   "targetAudience": "string (e.g., Enterprise IT Buyers, Expecting Mothers, Local Homeowners, Independent Developers)",
   "pagePurpose": "string (e.g., Homepage, Product Landing Page, Pricing Page, Contact Page)",
   "monetizationModel": "string (e.g., Subscription, One-time Purchase, Advertising, Services, Freemium SaaS)",
-  "valueProposition": "string (The core promise being made to the user, in 10 words or less)",
+  "valuePropositionRaw": "string (Copy the Deterministic Raw Value Prop exactly)",
+  "valuePropositionNormalized": "string (Clean up the raw VP into a crisp, 10-word-or-less value proposition)",
   "customerJourneyStage": "string (e.g., Awareness, Consideration, Decision, Retention)",
   "confidence": number (0 to 1, indicating how certain you are of this analysis),
   "evidence": ["string", "string"] (List exactly 2-3 specific phrases or elements from the data that led to this conclusion)
@@ -56,6 +121,11 @@ Return ONLY a valid JSON object matching this schema exactly, with NO markdown f
     rawResponse = response.text || "";
     const parsed = JSON.parse(rawResponse) as WebsiteUnderstanding;
     
+    // Safety check - ensure raw VP is carried over correctly
+    if (!parsed.valuePropositionRaw) {
+      parsed.valuePropositionRaw = rawVP;
+    }
+    
     return {
       data: parsed,
       log: {
@@ -80,21 +150,9 @@ Return ONLY a valid JSON object matching this schema exactly, with NO markdown f
       aiStatus = "AI_TIMEOUT";
     }
 
+    // Since AI failed, we fallback entirely to deterministic understanding
     return {
-      data: {
-        proposedWebsiteType: "unknown",
-        platformType: "Unknown",
-        websiteType: "unknown",
-        businessModel: "Unknown Business",
-        primaryGoal: "Conversion",
-        targetAudience: "General Audience",
-        pagePurpose: "Homepage",
-        monetizationModel: "Unknown",
-        valueProposition: "Unknown",
-        customerJourneyStage: "Awareness",
-        confidence: 0,
-        evidence: ["Fallback used due to missing API key or failure."]
-      },
+      data: deterministicFallback,
       log: {
         step: "website_understanding",
         status: "Failed",

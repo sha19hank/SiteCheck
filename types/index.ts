@@ -8,42 +8,12 @@ export type ScoreLabel = "Excellent" | "Good" | "Needs work" | "Poor";
 
 // ─── Findings (Layer 2 output — deterministic, no AI) ────────────────────────
 
-export type FindingCheck =
-  // Performance
-  | "lcp_slow" | "fcp_slow" | "cls_high" | "speed_index_slow"
-  | "mobile_score_low" | "images_unoptimized" | "render_blocking_resources" | "missing_viewport"
-  // Trust
-  | "no_phone_number" | "no_email_address" | "no_testimonials"
-  | "no_about_page" | "about_not_in_nav" | "no_privacy_policy"
-  | "no_ssl" | "no_address" | "no_social_links"
-  | "no_trust_badges" | "no_team_section" | "trust_sequencing_friction"
-  // Clarity
-  | "missing_h1" | "multiple_h1" | "missing_meta_description"
-  | "meta_description_short" | "title_missing" | "title_too_long"
-  | "poor_heading_structure" | "no_value_proposition" | "weak_value_proposition"
-  | "nav_too_complex" | "footer_missing" | "wall_of_text" | "thin_content"
-  // Conversion
-  | "no_clear_cta_detected" | "cta_below_fold" | "cta_text_generic"
-  | "multiple_competing_ctas" | "form_too_long" | "no_contact_form"
-  | "no_pricing_info" | "no_social_proof_near_cta"
-  // Passes (positive signals)
-  | "ssl_active" | "fast_lcp" | "good_mobile_score"
-  | "has_testimonials" | "has_phone" | "short_form"
-  | "clear_cta" | "good_heading_structure" | "has_meta_description";
-
-export interface Finding {
-  check: FindingCheck;
-  category: ScoreDimension;
-  severity: SeverityLevel;
-  detail?: string; // e.g. "4.8s", "Get in touch"
-}
-
-// ─── Scores ──────────────────────────────────────────────────────────────────
+// Types removed in favor of CanonicalFinding
 
 export interface DimensionScore {
   score: number; // 0–100
   label: ScoreLabel;
-  findings: Finding[];
+  findings: CanonicalFinding[];
 }
 
 export interface AuditScores {
@@ -199,7 +169,7 @@ export interface WebsiteClassification {
   voteBreakdown: VoteBreakdown;
 }
 
-export interface CategoryFinding {
+export interface CanonicalFinding {
   id: string;
   title: string;
   description: string;
@@ -227,7 +197,7 @@ export interface CategoryAudit {
     clarity: number;
     performance: number;
   };
-  findings: CategoryFinding[];
+  findings: CanonicalFinding[];
   recommendations: CategoryRecommendation[];
   strengths: string[];
   weaknesses: string[];
@@ -265,7 +235,8 @@ export interface WebsiteUnderstanding {
   targetAudience: string;
   pagePurpose: string;
   monetizationModel: string;
-  valueProposition: string;
+  valuePropositionRaw: string;
+  valuePropositionNormalized: string;
   customerJourneyStage: string;
   confidence: number;
   evidence: string[];
@@ -416,7 +387,7 @@ export interface EvidenceItem {
 
 export interface ConsultantReport {
   // Report Meta
-  reportConfidence: { level: "HIGH" | "MEDIUM" | "LOW"; explanation: string };
+  reportConfidence: { level: "HIGH" | "MEDIUM" | "LOW"; explanation: string; metrics: { evidenceCoverage: number; understandingCompleteness: number; scrapeQuality: string; classificationConfidence: number } };
   auditLimitations: { text: string; aiAvailable: boolean; scrapeQuality: string; classificationConfidence: string };
   
   // Free Tier

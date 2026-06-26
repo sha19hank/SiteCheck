@@ -1,8 +1,8 @@
-import { ScrapedData, CategoryAudit, CategoryFinding, CategoryRecommendation } from "@/types";
+import { ScrapedData, CategoryAudit, CanonicalFinding, CategoryRecommendation } from "@/types";
 import { CHECK_CASE_STUDIES, CHECK_DEMO_BOOKING, CHECK_TESTIMONIALS } from "../check-registry";
 
 export function runAgencyAudit(data: ScrapedData): CategoryAudit {
-  const findings: CategoryFinding[] = [];
+  const findings: CanonicalFinding[] = [];
   const recommendations: CategoryRecommendation[] = [];
   const strengths: string[] = [];
   const weaknesses: string[] = [];

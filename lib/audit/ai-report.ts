@@ -68,10 +68,10 @@ function buildPrompt(
   screenshot: ScreenshotData | null,
 ): string {
   const allFindings = [
-    ...scores.performance.findings,
-    ...scores.trust.findings,
-    ...scores.clarity.findings,
-    ...scores.conversion.findings,
+    ...scores.performance.findings.map(f => ({ category: "performance", check: f.title || f.id, detail: f.description || "", severity: f.severity })),
+    ...scores.trust.findings.map(f => ({ category: "trust", check: f.title || f.id, detail: f.description || "", severity: f.severity })),
+    ...scores.clarity.findings.map(f => ({ category: "clarity", check: f.title || f.id, detail: f.description || "", severity: f.severity })),
+    ...scores.conversion.findings.map(f => ({ category: "conversion", check: f.title || f.id, detail: f.description || "", severity: f.severity })),
   ];
 
   const industryCtx = INDUSTRY_CONTEXT[scraped.pageType] ?? INDUSTRY_CONTEXT.unknown;
