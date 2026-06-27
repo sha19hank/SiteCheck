@@ -2,7 +2,6 @@ import { GoogleGenAI } from "@google/genai";
 import {
   AuditScores,
   CategoryAudit,
-  CanonicalFinding,
   ConsultantReport,
   ScrapeDiagnostics,
   WebsiteClassification,
@@ -12,30 +11,31 @@ import {
   SectionAnalysis,
   PriorityMatrix,
   ActionPlanWeek,
-  CompetitivePositioning
-} from "../../../types";
+  CompetitivePositioning,
+  ScrapedData,
+  PageSpeedData,
+  RecommendationV2
+} from "@/types";
 
-function mapSeverityToPriority(severity: string): "High" | "Medium" | "Low" {
-  if (severity === "critical" || severity === "high") return "High";
-  if (severity === "medium") return "Medium";
-  return "Low";
-}
+// Import Phase 5.2A Intelligence Modules
+import { resolveBusinessContext } from "./core/context-resolver";
+import { getKnowledgeModel } from "./models";
+import { analyzeGaps } from "./engines/gap-analysis";
+import { scoreImpact } from "./engines/impact-engine";
+import { generateRecommendations } from "./engines/recommendation-engine";
+import { prioritizeRecommendations } from "./engines/prioritization";
+import { calculateConfidence } from "./engines/confidence-engine";
+import { resolveReportDepth } from "./engines/depth-resolver";
+import { getNotRecommendedItems } from "./engines/not-recommended-engine";
 
-function mapImpactEffort(severity: string, check: string): { impact: "High" | "Medium" | "Low"; effort: "High" | "Medium" | "Low" } {
-  // Simple heuristic for deterministic mapping
-  const impact = mapSeverityToPriority(severity);
-  
-  // High effort markers
-  if (check.includes("page") || check.includes("structure") || check.includes("system") || check.includes("policy")) {
-    return { impact, effort: "High" };
-  }
-  // Medium effort markers
-  if (check.includes("form") || check.includes("content") || check.includes("social_proof")) {
-    return { impact, effort: "Medium" };
-  }
-  // Default to low effort for quick text/meta/cta tweaks
-  return { impact, effort: "Low" };
-}
+// Import Phase 5.2B Reasoning Modules
+import { evaluateWebsiteCoherence } from "./engines/cross-page";
+import { buildRelationshipGraph } from "./engines/relationship-graph";
+import { inferRootCauses } from "./engines/root-cause";
+import { discoverOpportunities } from "./engines/opportunities";
+import { evaluateBenchmarks } from "./engines/benchmark";
+import { annotatePsychology } from "./engines/psychology";
+import { estimateRevenueImpact } from "./engines/revenue-impact";
 
 function getWhyItMatters(check: string, category: string): string {
   if (category === "trust") return "Users will not convert or purchase if they don't explicitly trust the business entity.";
@@ -45,71 +45,105 @@ function getWhyItMatters(check: string, category: string): string {
   return "This issue degrades the overall user experience and professional feel of the platform.";
 }
 
-function getExpectedOutcome(check: string, category: string): string {
-  if (category === "trust") return "Increased user trust and lower abandonment rates.";
-  if (category === "conversion") return "Higher conversion rates and more captured leads.";
-  if (category === "performance") return "Faster page loads and improved SEO rankings.";
-  if (category === "clarity") return "Better user comprehension and lower bounce rates.";
-  return "Improved overall platform quality.";
-}
-
 export async function generateConsultantReport(
   scores: AuditScores,
-  scrapedData: any,
+  scrapedData: ScrapedData,
   diagnostics: ScrapeDiagnostics,
   classification: WebsiteClassification,
   understanding: WebsiteUnderstanding,
   categoryAudit: CategoryAudit,
-  confidenceParams: {
-    level: "HIGH" | "MEDIUM" | "LOW";
-    metrics: { evidenceCoverage: number; understandingCompleteness: number; scrapeQuality: string; classificationConfidence: number };
-  }
+  pageSpeedData?: PageSpeedData,
+  confidenceParams?: any
 ): Promise<ConsultantReport> {
   
-  // 1. Audit Limitations & Confidence
+  // ==========================================
+  // PHASE 5.2B: CONSULTANT REASONING SYSTEM
+  // ==========================================
+
+  // 1. Resolve Context
+  const businessContext = resolveBusinessContext(classification, understanding);
+
+  // 2. Load Knowledge Model
+  const knowledgeModel = getKnowledgeModel(businessContext.websiteType);
+
+  // 3. Gap Analysis
+  const gaps = analyzeGaps(
+    knowledgeModel,
+    scrapedData,
+    categoryAudit,
+    understanding,
+    classification,
+    pageSpeedData as PageSpeedData,
+    diagnostics
+  );
+
+  // 4. Business Impact Engine
+  const scoredGaps = scoreImpact(gaps, businessContext);
+
+  // 5. Cross-Page Coherence Engine (5.2B)
+  const crossPageResult = evaluateWebsiteCoherence(scrapedData, businessContext, understanding);
+
+  // 6. Relationship Graph Engine (5.2B)
+  const relationshipResult = buildRelationshipGraph(scoredGaps);
+
+  // 7. Root Cause Engine (5.2B)
+  const rootCauseResult = inferRootCauses(scoredGaps, relationshipResult.data);
+
+  // 8. Opportunity Discovery Engine (5.2B)
+  const opportunityResult = discoverOpportunities(scrapedData, businessContext, scoredGaps);
+
+  // 9. Benchmark Engine (5.2B)
+  const benchmarkResult = evaluateBenchmarks(scores, businessContext, knowledgeModel);
+
+  // 10. Behavioural Psychology Engine (5.2B)
+  const psychologyResult = annotatePsychology(scoredGaps);
+
+  // 11. Revenue Impact Engine (5.2B)
+  const revenueResult = estimateRevenueImpact(scoredGaps, businessContext);
+
+  // 12. Recommendation Engine V2 (Refined with reasoning traces in 5.2B)
+  const recommendationsV2 = generateRecommendations(
+    scoredGaps,
+    businessContext,
+    rootCauseResult.data,
+    relationshipResult.data,
+    psychologyResult.data,
+    revenueResult.data,
+    benchmarkResult.data
+  );
+
+  // 13. Prioritization Engine
+  const priorityMatrixV2 = prioritizeRecommendations(recommendationsV2);
+
+  // 14. Confidence Engine V2
+  const confidenceV2 = calculateConfidence(diagnostics, classification, gaps);
+
+  // 15. Report Depth Resolver
+  const reportDepth = resolveReportDepth(businessContext, diagnostics, recommendationsV2.reduce((acc, rec) => acc + rec.evidence.length, 0));
+
+  // 16. "Not Recommended" Engine
+  const notRecommendedItems = getNotRecommendedItems(gaps, businessContext);
+
+  // ==========================================
+  // MAP TO BACKWARDS COMPATIBLE FORMAT
+  // ==========================================
+
   const aiAvailable = classification.aiStatus === "AI_AVAILABLE";
   
-  const reportConfidenceLevel = confidenceParams.level;
-  const metricsMsg = `Coverage: ${(confidenceParams.metrics.evidenceCoverage*100).toFixed(0)}% | Completeness: ${(confidenceParams.metrics.understandingCompleteness*100).toFixed(0)}% | Scrape: ${confidenceParams.metrics.scrapeQuality}`;
-  const limitations = `We successfully analyzed the website with a ${diagnostics.scrapeQuality} quality scrape. AI assistance was ${aiAvailable ? "available" : `unavailable due to ${classification.aiStatus}`}. Recommendations are based on deterministic signals.`;
+  let legacyConfidenceLevel: "HIGH" | "MEDIUM" | "LOW" = "LOW";
+  if (confidenceV2.overallConfidence >= 0.8) legacyConfidenceLevel = "HIGH";
+  else if (confidenceV2.overallConfidence >= 0.5) legacyConfidenceLevel = "MEDIUM";
 
-  // 2. Build Insights from Findings
-  const allInsights: ActionableInsight[] = [];
-  const evidenceLedger: EvidenceItem[] = [];
+  const limitations = `We successfully analyzed the website with a ${diagnostics.scrapeQuality} quality scrape. Recommendations are generated deterministically based on the ${businessContext.websiteType} knowledge model and deep causal reasoning engines.`;
 
-  categoryAudit.findings.forEach(f => {
-    if (f.severity === "pass") return;
-    
-    const { impact, effort } = mapImpactEffort(f.severity, f.id);
-    const priority = mapSeverityToPriority(f.severity);
-    
-    const insight: ActionableInsight = {
-      problem: f.title || f.id || "Issue detected",
-      evidence: f.evidence && f.evidence.length > 0 ? f.evidence : [f.description || `Detected in ${f.category} analysis`],
-      whyItMatters: getWhyItMatters(f.id, f.category),
-      businessImpact: `Impacts ${f.category} metrics and overall growth readiness.`,
-      recommendedFix: `Resolve the ${f.title} issue based on category best practices.`,
-      priority,
-      effort,
-      expectedOutcome: getExpectedOutcome(f.id, f.category)
-    };
-    allInsights.push(insight);
+  const priorityMatrix: PriorityMatrix = {
+    immediateWins: priorityMatrixV2.immediateWins as ActionableInsight[],
+    strategicProjects: priorityMatrixV2.strategicProjects as ActionableInsight[],
+    optionalImprovements: priorityMatrixV2.optionalImprovements as ActionableInsight[],
+    deprioritize: priorityMatrixV2.deprioritize as ActionableInsight[]
+  };
 
-    evidenceLedger.push({
-      finding: insight.problem,
-      source: `Automated Check: ${f.category}`,
-      impact: `${impact} Impact`
-    });
-  });
-
-  // Sort insights by priority
-  const highPriority = allInsights.filter(i => i.priority === "High");
-  const mediumPriority = allInsights.filter(i => i.priority === "Medium");
-  const lowPriority = allInsights.filter(i => i.priority === "Low");
-
-  // Task 7: Minimum of real findings, cap at 3
-  const topQuickWins = [...highPriority, ...mediumPriority, ...lowPriority].slice(0, 3);
-
+  const topQuickWins = priorityMatrix.immediateWins.slice(0, 3);
   if (topQuickWins.length === 0) {
     topQuickWins.push({
       problem: "No critical quick wins identified",
@@ -123,53 +157,46 @@ export async function generateConsultantReport(
     });
   }
 
-  // 3. Section Analysis
+  const allInsights = [
+    ...priorityMatrixV2.immediateWins,
+    ...priorityMatrixV2.strategicProjects,
+    ...priorityMatrixV2.optionalImprovements,
+    ...priorityMatrixV2.deprioritize
+  ] as ActionableInsight[];
+
+  const evidenceLedger: EvidenceItem[] = allInsights.map(i => ({
+    finding: i.problem,
+    source: i.evidence[0] || "Automated Scan",
+    impact: i.businessImpact
+  }));
+
   const buildSection = (dimension: keyof AuditScores): SectionAnalysis => {
     const dim = scores[dimension] as any;
-    const findings = (categoryAudit.findings.filter(f => f.category === dimension && f.severity !== "pass") || []).map(f => f.title || f.id);
+    const relatedGaps = gaps.filter(g => g.affectedArea === dimension);
+    
     return {
       score: dim?.score || 0,
-      findings: findings.slice(0, 5),
+      findings: relatedGaps.map(g => g.title).slice(0, 5),
       whyItMatters: getWhyItMatters("", dimension as string),
       businessImpact: `A low score in ${dimension} restricts business growth.`,
-      recommendedActions: findings.slice(0, 3).map(f => `Fix: ${f}`)
+      recommendedActions: relatedGaps.slice(0, 3).map(g => `Fix: ${g.title}`)
     };
   };
 
   const performanceAnalysis = buildSection("performance");
   const trustAnalysis = buildSection("trust");
   const conversionAnalysis = buildSection("conversion");
-  const clarityAnalysis = buildSection("clarity"); // Used implicitly if needed
 
-  // 4. Priority Matrix
-  const priorityMatrix: PriorityMatrix = {
-    immediateWins: allInsights.filter(i => i.priority === "High" && i.effort === "Low"),
-    strategicProjects: allInsights.filter(i => i.priority === "High" && (i.effort === "Medium" || i.effort === "High")),
-    optionalImprovements: allInsights.filter(i => (i.priority === "Medium" || i.priority === "Low") && i.effort === "Low"),
-    deprioritize: allInsights.filter(i => (i.priority === "Medium" || i.priority === "Low") && (i.effort === "Medium" || i.effort === "High")),
-  };
-
-  // 5. 30-Day Action Plan
   const thirtyDayActionPlan: ActionPlanWeek[] = [
     {
       week: "Week 1: Immediate Wins",
       focus: "Fixing high-impact, low-effort issues.",
-      tasks: priorityMatrix.immediateWins.slice(0, 3).map(i => i.recommendedFix)
+      tasks: priorityMatrixV2.immediateWins.slice(0, 3).map(i => i.recommendedFix)
     },
     {
       week: "Week 2: Strategic Kickoff",
       focus: "Beginning work on larger structural issues.",
-      tasks: priorityMatrix.strategicProjects.slice(0, 2).map(i => i.recommendedFix)
-    },
-    {
-      week: "Week 3: Core Enhancements",
-      focus: "Improving trust and clarity.",
-      tasks: priorityMatrix.strategicProjects.slice(2, 4).map(i => i.recommendedFix)
-    },
-    {
-      week: "Week 4: Optimization",
-      focus: "Cleaning up optional improvements.",
-      tasks: priorityMatrix.optionalImprovements.slice(0, 3).map(i => i.recommendedFix)
+      tasks: priorityMatrixV2.strategicProjects.slice(0, 2).map(i => i.recommendedFix)
     }
   ];
 
@@ -179,19 +206,22 @@ export async function generateConsultantReport(
     { week: "Month 3", focus: "Optimize", tasks: ["Review metrics", "Iterate on messaging"] }
   ];
 
-  // 6. Competitive Positioning
   const compPos: CompetitivePositioning = {
     strengths: categoryAudit.strengths || ["Basic presence established"],
-    missingIndustryStandards: ["Comprehensive case studies", "Clear pricing tiers"], // Placeholder, improved by LLM
+    missingIndustryStandards: gaps.filter(g => g.type === "missing").map(g => g.title),
     potentialDisadvantages: ["Competitors may capture trust faster"]
   };
 
-  // 7. Base Deterministic Report
   const baseReport: ConsultantReport = {
     reportConfidence: {
-      level: reportConfidenceLevel,
-      explanation: `Confidence is ${reportConfidenceLevel} based on ${classification.confidenceTier} classification and ${diagnostics.scrapeQuality} scrape.`,
-      metrics: confidenceParams.metrics
+      level: legacyConfidenceLevel,
+      explanation: `Confidence is ${legacyConfidenceLevel} based on ${classification.confidenceTier} classification and ${diagnostics.scrapeQuality} scrape.`,
+      metrics: {
+        evidenceCoverage: confidenceV2.evidenceQuality,
+        understandingCompleteness: confidenceV2.dataCompleteness,
+        scrapeQuality: diagnostics.scrapeQuality,
+        classificationConfidence: confidenceV2.classificationCertainty
+      }
     },
     auditLimitations: {
       text: limitations,
@@ -199,21 +229,38 @@ export async function generateConsultantReport(
       scrapeQuality: diagnostics.scrapeQuality,
       classificationConfidence: classification.confidenceTier
     },
-    executiveSummary: `This website is classified as a ${classification.websiteType} with an overall health score of ${scores.overall}. It currently has critical bottlenecks in ${allInsights.length > 0 ? allInsights[0].problem : "several areas"} that are preventing optimal growth.`,
+    executiveSummary: `This website is classified as a ${classification.websiteType} with an overall health score of ${scores.overall}. ${benchmarkResult.data.comparisonMessage} It currently has bottlenecks in ${allInsights.length > 0 ? allInsights[0].problem : "several areas"} that are preventing optimal growth.`,
     websiteHealthScore: scores.overall,
     topQuickWins,
     performanceAnalysis,
     trustAnalysis,
     conversionAnalysis,
-    growthOpportunities: allInsights,
+    growthOpportunities: allInsights, // To be expanded in Phase 5.3 with real opportunity objects
     competitivePositioning: compPos,
     priorityMatrix,
     thirtyDayActionPlan,
     ninetyDayRoadmap,
-    evidenceLedger
+    evidenceLedger,
+    
+    // V2 Outputs
+    businessContext,
+    confidenceV2,
+    reportDepth,
+    notRecommendedItems,
+    evaluatedGaps: gaps,
+
+    // V2B Reasoning Traces
+    reasoningTraces: {
+      crossPageFindings: crossPageResult.data,
+      rootCauses: rootCauseResult.data,
+      relationshipGraph: relationshipResult.data,
+      opportunities: opportunityResult.data,
+      benchmarkContext: benchmarkResult.data,
+      psychologyAnnotations: Object.fromEntries(psychologyResult.data),
+      revenueImpacts: Object.fromEntries(revenueResult.data)
+    }
   };
 
-  // 8. LLM Overlay (Optional)
   if (aiAvailable) {
     try {
       const apiKey = process.env.GEMINI_API_KEY;

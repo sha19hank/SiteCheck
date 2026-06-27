@@ -76,6 +76,7 @@ export async function runAudit(request: AuditRequest): Promise<AuditRecord> {
     classification,
     websiteUnderstanding,
     categoryAudit,
+    pageSpeedData,
     {
       level: auditConfidence,
       metrics: { evidenceCoverage, understandingCompleteness, scrapeQuality: scrapeDiagnostics.scrapeQuality, classificationConfidence: classification.confidence }

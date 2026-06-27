@@ -350,6 +350,21 @@ export interface ActionableInsight {
   priority: "High" | "Medium" | "Low";
   effort: "High" | "Medium" | "Low";
   expectedOutcome: string;
+  
+  // Phase 5.2A additions
+  id?: string;
+  priorityScore?: number;
+  priorityTier?: "Tier 1: Do This Today" | "Tier 2: Do This Month" | "Tier 3: Do This Quarter" | "Tier 4: Backlog";
+  effortV2?: "Trivial" | "Small" | "Medium" | "Large" | "Major";
+  owner?: string;
+  dependencies?: {
+    prerequisites: string[];
+    dependsOn: string[];
+    blocks: string[];
+  };
+  confidence?: number;
+  kpi?: KPIDefinition;
+  isQuickWin?: boolean;
 }
 
 export interface SectionAnalysis {
@@ -385,6 +400,186 @@ export interface EvidenceItem {
   impact: string;
 }
 
+// ─── Phase 5.2A: Consultant Intelligence Engine Types ──────────────────────
+
+export interface BusinessContext {
+  websiteType: WebsiteType;
+  businessModel: string;
+  targetAudience: string;
+  primaryGoal: string;
+  valueProposition: string;
+  monetization: string;
+  platformType: string;
+  growthStage: "Pre-Launch" | "Early Stage" | "Growth" | "Scale" | "Enterprise" | "Unknown";
+  visitorIntent: string;
+  industryVertical: string;
+  goToMarketMotion: "PLG" | "Sales-Led" | "Community-Led" | "Content-Led" | "Hybrid" | "Unknown";
+  pricingStrategy: "Freemium" | "Free Trial" | "Subscription" | "Usage-Based" | "One-Time" | "Enterprise / Custom" | "Free / Open Source" | "Unknown";
+  acquisitionModel: "Organic/SEO" | "Paid Ads" | "Referral/Word-of-Mouth" | "Direct/Brand" | "Partnership" | "Unknown";
+  competitivePosition: "Market Leader" | "Challenger" | "Niche Player" | "New Entrant" | "Unknown";
+  businessMaturity: "Idea Stage" | "MVP" | "Product-Market Fit" | "Scaling" | "Mature" | "Unknown";
+  revenueModel: "Pre-Revenue" | "Early Revenue" | "Revenue-Optimized" | "Revenue-Mature" | "Unknown";
+}
+
+export type SignalImportance = "critical" | "important" | "helpful" | "optional" | "negative" | "forbidden";
+
+export interface Expectation {
+  id: string;
+  category: "trust" | "conversion" | "clarity" | "performance" | "seo" | "ux" | "monetization" | "content";
+  description: string;
+  importance: SignalImportance;
+  weight: number; // 0.0 - 1.0
+  evidenceRules?: string[];
+}
+
+export interface KnowledgeModel {
+  type: WebsiteType;
+  description: string;
+  expectations: Expectation[];
+  successMetrics: string[];
+  antiPatterns: string[];
+}
+
+export interface EvaluatedGap {
+  id: string;
+  title: string;
+  description: string;
+  importance: SignalImportance;
+  businessReason: string;
+  affectedArea: string;
+  confidence: number;
+  evidence: string[];
+  type: "missing" | "weak" | "contradictory";
+}
+
+export interface ImpactScores {
+  revenue: number;
+  trust: number;
+  conversion: number;
+  seo: number;
+  ux: number;
+  growth: number;
+  overall: number;
+}
+
+export interface KPIDefinition {
+  metric: string;
+  baseline: string;
+  target: string;
+  trackingTool: string;
+  trackingMethod: string;
+  expectedTimeline: string;
+  owner: string;
+}
+
+export interface RecommendationV2 extends ActionableInsight {
+  id: string;
+  recommendedAction: string;
+  priorityScore: number;
+  priorityTier: "Tier 1: Do This Today" | "Tier 2: Do This Month" | "Tier 3: Do This Quarter" | "Tier 4: Backlog";
+  effortV2: "Trivial" | "Small" | "Medium" | "Large" | "Major";
+  owner: string;
+  dependencies: {
+    prerequisites: string[];
+    dependsOn: string[];
+    blocks: string[];
+  };
+  confidence: number;
+  kpi: KPIDefinition;
+  isQuickWin: boolean;
+
+  // Phase 5.2B Reasoning Trace Additions
+  rootCauseId?: string;
+  psychologyPrinciple?: PsychologyAnnotation;
+  revenueImpact?: RevenueImpact;
+  journeyStage?: string;
+  benchmarkContext?: BenchmarkContext;
+  reasoningTrace?: {
+    evidence: string[];
+    gapDescription: string;
+    rootCauseDescription?: string;
+    impactDescription: string;
+    priorityReasoning: string;
+    recommendationReasoning: string;
+    confidenceReasoning: string;
+  };
+}
+
+export interface IntelligenceEngineResult<T> {
+  data: T;
+  confidence: number;
+  evidence: string[];
+  debugMetadata?: Record<string, any>;
+}
+
+export interface CrossPageFinding {
+  type: "promise_delivery" | "messaging_alignment" | "nav_content";
+  severity: "critical" | "high" | "medium" | "low";
+  sourcePage: string;
+  targetPage: string;
+  description: string;
+  impact: string;
+}
+
+export interface RootCause {
+  id: string;
+  title: string;
+  description: string;
+  affectedGapIds: string[];
+  evidence: string[];
+}
+
+export interface RelationshipEdge {
+  sourceId: string;
+  targetId: string;
+  type: "CAUSES" | "ENABLES" | "BLOCKS" | "AMPLIFIES" | "DEPENDS_ON" | "CONFLICTS_WITH";
+  confidence: number;
+}
+
+export interface Opportunity {
+  category: "Asset Leverage" | "Missing Revenue" | "Competitive Gaps" | "Growth Channels";
+  title: string;
+  description: string;
+  opportunityScore: number; // 0-100
+  evidence: string[];
+}
+
+export interface BenchmarkContext {
+  overallScorePercentile: "Top 25%" | "Average" | "Below average" | "Unknown";
+  expectedScoreRange: [number, number];
+  comparisonMessage: string;
+}
+
+export interface PsychologyAnnotation {
+  principle: "Trust" | "Authority" | "Social Proof" | "Clarity" | "Cognitive Load" | "Risk Reversal" | "Urgency/Scarcity" | "Reciprocity";
+  evidence: string[];
+  metricAffected: string;
+}
+
+export interface RevenueImpact {
+  estimateLow: number;
+  estimateHigh: number;
+  assumptions: string[];
+  trafficTier: "Tier 1: < 1K" | "Tier 2: 1K-10K" | "Tier 3: 10K-100K" | "Tier 4: 100K+";
+}
+
+export interface ConfidenceV2 {
+  findingConfidence: number;
+  recommendationConfidence: number;
+  sectionConfidence: number;
+  overallConfidence: number;
+  evidenceQuality: number;
+  dataCompleteness: number;
+  classificationCertainty: number;
+}
+
+export interface NotRecommendedItem {
+  feature: string;
+  reason: string;
+}
+
+export type ReportDepth = "MINIMAL" | "STANDARD" | "COMPREHENSIVE";
+
 export interface ConsultantReport {
   // Report Meta
   reportConfidence: { level: "HIGH" | "MEDIUM" | "LOW"; explanation: string; metrics: { evidenceCoverage: number; understandingCompleteness: number; scrapeQuality: string; classificationConfidence: number } };
@@ -405,6 +600,24 @@ export interface ConsultantReport {
   thirtyDayActionPlan: ActionPlanWeek[];
   ninetyDayRoadmap: ActionPlanWeek[];
   evidenceLedger: EvidenceItem[];
+  
+  // Phase 5.2A Intelligence Outputs (Optional for backwards compatibility)
+  businessContext?: BusinessContext;
+  confidenceV2?: ConfidenceV2;
+  reportDepth?: ReportDepth;
+  notRecommendedItems?: NotRecommendedItem[];
+  evaluatedGaps?: EvaluatedGap[];
+  
+  // Phase 5.2B Debug Traces
+  reasoningTraces?: {
+    crossPageFindings?: CrossPageFinding[];
+    rootCauses?: RootCause[];
+    relationshipGraph?: RelationshipEdge[];
+    opportunities?: Opportunity[];
+    benchmarkContext?: BenchmarkContext;
+    psychologyAnnotations?: Record<string, PsychologyAnnotation>;
+    revenueImpacts?: Record<string, RevenueImpact>;
+  };
 }
 
 // ─── Payment ──────────────────────────────────────────────────────────────────
