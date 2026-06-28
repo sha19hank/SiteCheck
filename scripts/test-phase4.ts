@@ -4,10 +4,7 @@ import { loadEnvConfig } from "@next/env";
 loadEnvConfig(process.cwd());
 
 const SITES = [
-  { url: "https://github.com", name: "github" },
-  { url: "https://canva.com", name: "canva" },
-  { url: "https://notion.so", name: "notion" },
-  { url: "https://aliabdaal.com", name: "ali_abdaal" }
+  { url: "https://stripe.com", name: "stripe" }
 ];
 
 const ARTIFACT_DIR = "C:/Users/KIIT0001/.gemini/antigravity-ide/brain/072c3184-1014-432f-ac73-07caf9204e82/scratch";
