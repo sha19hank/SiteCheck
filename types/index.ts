@@ -472,43 +472,95 @@ export interface KPIDefinition {
   owner: string;
 }
 
+export interface RecommendationConfidence {
+  score: number; // 0-100 weighted
+  level: "HIGH" | "MEDIUM" | "LOW";
+  explanation: string;
+  supportingEvidenceCount: number;
+  reasoningEngineCount: number;
+}
+
+export interface EvidenceChain {
+  evidenceIds: string[];
+  findingIds: string[];
+  gapIds: string[];
+  rootCauseIds: string[];
+  relationshipGraphIds: string[];
+  psychologyIds: string[];
+  benchmarkIds: string[];
+  revenueIds: string[];
+  priorityIds: string[];
+  
+  // Object references for lightweight UI access
+  references: {
+    gaps?: any[];
+    rootCauses?: any[];
+    relationships?: any[];
+    psychology?: any[];
+    benchmarks?: any[];
+    revenue?: any[];
+  };
+}
+
 export interface RecommendationV2 extends ActionableInsight {
   id: string;
-  recommendedAction: string;
-  priorityScore: number;
-  priorityTier: "Tier 1: Do This Today" | "Tier 2: Do This Month" | "Tier 3: Do This Quarter" | "Tier 4: Backlog";
-  effortV2: "Trivial" | "Small" | "Medium" | "Large" | "Major";
-  owner: string;
+  
+  // Consultant Expansion Fields
+  whatIsWrong: string;
+  whyItExists: string;
+  whyItMatters: string;
+  businessImpact: string;
+  rootCauseDescription?: string;
+  recommendedSolution: string;
+  whyAppropriate: string;
+  
   dependencies: {
     prerequisites: string[];
     dependsOn: string[];
     blocks: string[];
   };
-  confidence: number;
+  recommendedOrder: number; // Execution sequence
+  owner: string; // Marketing, Engineering, Design, etc.
+  estimatedEffort: "Very Low" | "Low" | "Medium" | "High" | "Very High";
+  estimatedTime: string; // e.g. "15-30 minutes", "Under 2 hours", "Multiple weeks"
   kpi: KPIDefinition;
+  expectedOutcome: string;
+  
+  // New Confidence & Tracing
+  consultantConfidence: RecommendationConfidence;
+  evidenceChain: EvidenceChain;
+  
+  // Original / Backwards Compat fields
+  priorityScore: number;
+  priorityTier: "Tier 1: Do This Today" | "Tier 2: Do This Month" | "Tier 3: Do This Quarter" | "Tier 4: Backlog";
   isQuickWin: boolean;
-
-  // Phase 5.2B Reasoning Trace Additions
+  
+  // Phase 5.2B Reasoning Trace Additions (legacy but preserved for now if needed, though replaced mostly by references)
   rootCauseId?: string;
   psychologyPrinciple?: PsychologyAnnotation;
   revenueImpact?: RevenueImpact;
   journeyStage?: string;
   benchmarkContext?: BenchmarkContext;
-  reasoningTrace?: {
-    evidence: string[];
-    gapDescription: string;
-    rootCauseDescription?: string;
-    impactDescription: string;
-    priorityReasoning: string;
-    recommendationReasoning: string;
-    confidenceReasoning: string;
-  };
+
+  // Phase 5.2C-B Cross References
+  relatedMetrics?: string[];
+  relatedSections?: string[];
+  relatedFindings?: string[];
+}
+
+export interface EngineMetadata {
+  engineName: string;
+  version: string;
+  executionTimeMs: number;
+  confidence: number;
+  evidenceProcessed: number;
 }
 
 export interface IntelligenceEngineResult<T> {
   data: T;
   confidence: number;
   evidence: string[];
+  engineMetadata: EngineMetadata;
   debugMetadata?: Record<string, any>;
 }
 
@@ -545,6 +597,14 @@ export interface Opportunity {
 }
 
 export interface BenchmarkContext {
+  actualScore: number;
+  industryAverage: number | string; // Numeric score or "Moderate"
+  topQuartile: number | string;
+  difference: string; // "One maturity level below expectation"
+  primaryReasonForDifference: string;
+  suggestedTargetScore: number | string;
+  
+  // Legacy / Compat
   overallScorePercentile: "Top 25%" | "Average" | "Below average" | "Unknown";
   expectedScoreRange: [number, number];
   comparisonMessage: string;
@@ -552,14 +612,24 @@ export interface BenchmarkContext {
 
 export interface PsychologyAnnotation {
   principle: "Trust" | "Authority" | "Social Proof" | "Clarity" | "Cognitive Load" | "Risk Reversal" | "Urgency/Scarcity" | "Reciprocity";
+  severity: "High" | "Medium" | "Low";
+  confidence: number;
   evidence: string[];
   metricAffected: string;
+  suggestedImprovement: string;
 }
 
 export interface RevenueImpact {
   estimateLow: number;
   estimateHigh: number;
-  assumptions: string[];
+  trafficAssumption: string;
+  conversionAssumption: string;
+  averageValueAssumption: string;
+  formulaUsed: string;
+  confidence: number;
+  assumptionReasoning: string;
+  
+  // Backwards compat
   trafficTier: "Tier 1: < 1K" | "Tier 2: 1K-10K" | "Tier 3: 10K-100K" | "Tier 4: 100K+";
 }
 
@@ -579,6 +649,37 @@ export interface NotRecommendedItem {
 }
 
 export type ReportDepth = "MINIMAL" | "STANDARD" | "COMPREHENSIVE";
+
+export interface ReportDepthConfig {
+  level: ReportDepth;
+  maxRecommendations: number;
+  maxRoadmapTasks: number;
+  evidenceVerbosity: "low" | "medium" | "high";
+  includeAppendix: boolean;
+  opportunityCount: number;
+}
+
+export interface PipelineExecution {
+  totalExecutionTime: number;
+  engineExecutionOrder: string[];
+  slowestEngine: { name: string; time: number };
+  totalEvidenceProcessed: number;
+  totalRecommendationsGenerated: number;
+  recommendationsRemovedByValidator: number;
+  recommendationsDowngraded: number;
+  opportunitiesGenerated: number;
+  rootCausesDetected: number;
+  validationWarnings: string[];
+  validatorModifications: Array<{
+    recommendationId: string;
+    action: "removed" | "downgraded";
+    reason: string;
+    validatorName: string;
+    originalConfidence: number;
+    newConfidence: number;
+    failingEvidence: string[];
+  }>;
+}
 
 export interface ConsultantReport {
   // Report Meta
@@ -604,11 +705,12 @@ export interface ConsultantReport {
   // Phase 5.2A Intelligence Outputs (Optional for backwards compatibility)
   businessContext?: BusinessContext;
   confidenceV2?: ConfidenceV2;
-  reportDepth?: ReportDepth;
+  reportDepth?: ReportDepthConfig | ReportDepth;
   notRecommendedItems?: NotRecommendedItem[];
   evaluatedGaps?: EvaluatedGap[];
   
-  // Phase 5.2B Debug Traces
+  // Phase 5.2C Debug Traces
+  pipelineExecution?: PipelineExecution;
   reasoningTraces?: {
     crossPageFindings?: CrossPageFinding[];
     rootCauses?: RootCause[];
@@ -618,6 +720,71 @@ export interface ConsultantReport {
     psychologyAnnotations?: Record<string, PsychologyAnnotation>;
     revenueImpacts?: Record<string, RevenueImpact>;
   };
+
+  // Phase 5.2C-B Report Composer Output
+  reportSections?: ReportSection[];
+}
+
+// ─── Phase 5.2C-B Report Composer Types ───────────────────────────────────────
+
+export type SectionRenderType = "text" | "metrics" | "timeline" | "cards" | "roadmap" | "comparison" | "table";
+
+export interface ReportSection {
+  id: string;
+  type: SectionRenderType;
+  title: string;
+  content: any; // Can be a string, array of objects, etc. depending on renderType
+  metadata: {
+    confidence: number;
+    evidenceCount: number;
+    generatedFrom: string[];
+    reasoningSummary: string;
+  };
+}
+
+export interface CompositionContext {
+  reportDepth: ReportDepthConfig;
+  businessContext: BusinessContext;
+  diagnostics: ScrapeDiagnostics;
+  pageSpeed: PageSpeedData;
+  scrapedData: ScrapedData;
+  classification: WebsiteClassification;
+  gaps: EvaluatedGap[];
+  recommendations: RecommendationV2[];
+  reasoningTraces: {
+    rootCauses: RootCause[];
+    crossPageFindings: CrossPageFinding[];
+    opportunities: Opportunity[];
+    relationshipGraph: RelationshipEdge[];
+    benchmarkContext: BenchmarkContext;
+    psychologyAnnotations: Record<string, PsychologyAnnotation>;
+    revenueImpacts: Record<string, RevenueImpact>;
+  };
+}
+
+export interface SectionDefinition {
+  id: string;
+  name: string;
+  priority: number;
+  requiredPlan: "free" | "report_unlock" | "enterprise";
+  applicableWebsiteTypes: WebsiteType[] | "ALL";
+  minReportDepth: "BASIC" | "STANDARD" | "COMPREHENSIVE";
+  dependencies?: string[];
+  optionalDependencies?: string[];
+  generate: (context: CompositionContext) => ReportSection | null;
+}
+
+export interface AuditMetricSummary {
+  id: string;
+  title: string;
+  currentValue: string | number;
+  expectedRange: string | number;
+  verdict: "STRONG" | "ADEQUATE" | "NEEDS_WORK" | "CRITICAL";
+  whyItMatters: string;
+  visibility: "free" | "premium" | "enterprise";
+  confidence: number;
+  relatedRecommendationIds?: string[];
+  relatedRootCauseIds?: string[];
 }
 
 // ─── Payment ──────────────────────────────────────────────────────────────────

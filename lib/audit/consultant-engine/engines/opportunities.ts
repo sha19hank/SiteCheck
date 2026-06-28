@@ -5,6 +5,7 @@ export function discoverOpportunities(
   context: BusinessContext,
   gaps: EvaluatedGap[]
 ): IntelligenceEngineResult<Opportunity[]> {
+  const startTime = performance.now();
   const opportunities: Opportunity[] = [];
   const engineEvidence: string[] = [];
 
@@ -68,10 +69,19 @@ export function discoverOpportunities(
     engineEvidence.push("Identified Competitive Gaps: Missing comparison pages for SaaS.");
   }
 
+  const endTime = performance.now();
+
   return {
     data: opportunities,
     confidence: 0.9, // Opportunities are additive, so confidence is generally high that they are good ideas
     evidence: engineEvidence,
+    engineMetadata: {
+      engineName: "OpportunitiesEngine",
+      version: "1.1.0",
+      executionTimeMs: Math.round(endTime - startTime),
+      confidence: 0.9,
+      evidenceProcessed: engineEvidence.length
+    },
     debugMetadata: {
       opportunitiesFound: opportunities.length
     }

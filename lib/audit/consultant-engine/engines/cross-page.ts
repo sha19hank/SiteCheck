@@ -17,6 +17,7 @@ export function evaluateWebsiteCoherence(
   context: BusinessContext,
   understanding: WebsiteUnderstanding
 ): IntelligenceEngineResult<CrossPageFinding[]> {
+  const startTime = performance.now();
   const findings: CrossPageFinding[] = [];
   const engineEvidence: string[] = [];
   
@@ -59,15 +60,14 @@ export function evaluateWebsiteCoherence(
       id: "price_position_mismatch",
       type: "promise_delivery",
       severity: "high",
-      description: "Positioning targets small businesses/startups, but pricing/motion targets enterprise.",
-      impact: "Attracts the wrong audience who will bounce upon seeing pricing, wasting marketing spend.",
+      description: "Positioning claims 'affordable/for startups', but pricing is enterprise/expensive.",
+      impact: "Attracts the wrong audience who will bounce upon seeing pricing, ruining acquisition efficiency.",
       sourcePage: "Homepage Hero",
       targetPage: "Pricing",
       threshold: 1.2,
       evaluate: (d, c, u) => {
         let score = 0;
         const ev: string[] = [];
-        
         const targetsSMB = u.targetAudience.toLowerCase().includes("startup") || 
                            u.targetAudience.toLowerCase().includes("small business") ||
                            u.targetAudience.toLowerCase().includes("creator") ||
@@ -168,10 +168,19 @@ export function evaluateWebsiteCoherence(
     engineEvidence.push("Reduced coherence confidence due to low WebsiteUnderstanding confidence.");
   }
 
+  const endTime = performance.now();
+  
   return {
     data: findings,
     confidence: overallConfidence,
     evidence: engineEvidence,
+    engineMetadata: {
+      engineName: "CrossPageCoherenceEngine",
+      version: "1.1.0",
+      executionTimeMs: Math.round(endTime - startTime),
+      confidence: overallConfidence,
+      evidenceProcessed: rules.length
+    },
     debugMetadata: {
       rulesEvaluated: rules.length,
       findingsCount: findings.length

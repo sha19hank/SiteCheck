@@ -1,10 +1,10 @@
-import { BusinessContext, ScrapeDiagnostics, ReportDepth } from "@/types";
+import { BusinessContext, ScrapeDiagnostics, ReportDepth, ReportDepthConfig } from "@/types";
 
 export function resolveReportDepth(
   context: BusinessContext,
   diagnostics: ScrapeDiagnostics,
   evidenceCount: number
-): ReportDepth {
+): ReportDepthConfig {
   let depthScore = 0;
 
   // 1. Website Complexity
@@ -21,7 +21,37 @@ export function resolveReportDepth(
   else if (diagnostics.scrapeQuality === "LOW") depthScore -= 2; // Hard penalty for poor quality
 
   // Resolution
-  if (depthScore >= 4) return "COMPREHENSIVE";
-  if (depthScore >= 1) return "STANDARD";
-  return "MINIMAL";
+  let level: ReportDepth = "MINIMAL";
+  if (depthScore >= 4) level = "COMPREHENSIVE";
+  else if (depthScore >= 1) level = "STANDARD";
+  
+  switch (level) {
+    case "MINIMAL":
+      return {
+        level: "MINIMAL",
+        maxRecommendations: 3,
+        maxRoadmapTasks: 2,
+        evidenceVerbosity: "low",
+        includeAppendix: false,
+        opportunityCount: 1,
+      };
+    case "STANDARD":
+      return {
+        level: "STANDARD",
+        maxRecommendations: 5,
+        maxRoadmapTasks: 4,
+        evidenceVerbosity: "medium",
+        includeAppendix: false,
+        opportunityCount: 2,
+      };
+    case "COMPREHENSIVE":
+      return {
+        level: "COMPREHENSIVE",
+        maxRecommendations: 10,
+        maxRoadmapTasks: 8,
+        evidenceVerbosity: "high",
+        includeAppendix: true,
+        opportunityCount: 4,
+      };
+  }
 }

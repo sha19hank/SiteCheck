@@ -14,7 +14,9 @@ import {
   CompetitivePositioning,
   ScrapedData,
   PageSpeedData,
-  RecommendationV2
+  RecommendationV2,
+  PipelineExecution,
+  CompositionContext
 } from "@/types";
 
 // Import Phase 5.2A Intelligence Modules
@@ -37,6 +39,13 @@ import { evaluateBenchmarks } from "./engines/benchmark";
 import { annotatePsychology } from "./engines/psychology";
 import { estimateRevenueImpact } from "./engines/revenue-impact";
 
+// Import Phase 5.2C Validators
+import { validateConsistency } from "./validators/consistency-validator";
+import { validateCompleteness } from "./validators/completeness-validator";
+
+// Import Report Composer
+import { generateReportSections } from "./report-composer";
+
 function getWhyItMatters(check: string, category: string): string {
   if (category === "trust") return "Users will not convert or purchase if they don't explicitly trust the business entity.";
   if (category === "conversion") return "Friction in the user journey directly reduces the rate of successful signups or purchases.";
@@ -53,8 +62,9 @@ export async function generateConsultantReport(
   understanding: WebsiteUnderstanding,
   categoryAudit: CategoryAudit,
   pageSpeedData?: PageSpeedData,
-  confidenceParams?: any
+  plan: "free" | "report_unlock" | "enterprise" | "pro" = "enterprise"
 ): Promise<ConsultantReport> {
+  const pipelineStartTime = performance.now();
   
   // ==========================================
   // PHASE 5.2B: CONSULTANT REASONING SYSTEM
@@ -102,7 +112,7 @@ export async function generateConsultantReport(
   const revenueResult = estimateRevenueImpact(scoredGaps, businessContext);
 
   // 12. Recommendation Engine V2 (Refined with reasoning traces in 5.2B)
-  const recommendationsV2 = generateRecommendations(
+  let recommendationsV2 = generateRecommendations(
     scoredGaps,
     businessContext,
     rootCauseResult.data,
@@ -111,15 +121,25 @@ export async function generateConsultantReport(
     revenueResult.data,
     benchmarkResult.data
   );
+  
+  // 15. Report Depth Resolver
+  const reportDepth = resolveReportDepth(businessContext, diagnostics, recommendationsV2.reduce((acc, rec) => acc + rec.evidence.length, 0));
+
+  const vResult = validateConsistency(recommendationsV2);
+  recommendationsV2 = vResult.validRecommendations;
+  const validatorModifications = vResult.modifications || [];
+  const validationWarnings = vResult.warnings || [];
+
+  const cResult = validateCompleteness(recommendationsV2, reportDepth);
+  recommendationsV2 = cResult.validRecommendations;
+  if (cResult.modifications) validatorModifications.push(...cResult.modifications);
+  if (cResult.warnings) validationWarnings.push(...cResult.warnings);
 
   // 13. Prioritization Engine
   const priorityMatrixV2 = prioritizeRecommendations(recommendationsV2);
 
   // 14. Confidence Engine V2
   const confidenceV2 = calculateConfidence(diagnostics, classification, gaps);
-
-  // 15. Report Depth Resolver
-  const reportDepth = resolveReportDepth(businessContext, diagnostics, recommendationsV2.reduce((acc, rec) => acc + rec.evidence.length, 0));
 
   // 16. "Not Recommended" Engine
   const notRecommendedItems = getNotRecommendedItems(gaps, businessContext);
@@ -212,6 +232,20 @@ export async function generateConsultantReport(
     potentialDisadvantages: ["Competitors may capture trust faster"]
   };
 
+  const pipelineExecution: PipelineExecution = {
+    totalExecutionTime: Math.round(performance.now() - pipelineStartTime),
+    engineExecutionOrder: [],
+    slowestEngine: { name: "None", time: 0 },
+    totalEvidenceProcessed: gaps.reduce((acc, g) => acc + g.evidence.length, 0) + crossPageResult.evidence.length,
+    totalRecommendationsGenerated: scoredGaps.length,
+    opportunitiesGenerated: opportunityResult.data.length,
+    rootCausesDetected: rootCauseResult.data.length,
+    validationWarnings,
+    validatorModifications,
+    recommendationsRemovedByValidator: validatorModifications.filter(m => m.action === "removed").length,
+    recommendationsDowngraded: validatorModifications.filter(m => m.action === "downgraded").length
+  };
+
   const baseReport: ConsultantReport = {
     reportConfidence: {
       level: legacyConfidenceLevel,
@@ -248,6 +282,7 @@ export async function generateConsultantReport(
     reportDepth,
     notRecommendedItems,
     evaluatedGaps: gaps,
+    pipelineExecution,
 
     // V2B Reasoning Traces
     reasoningTraces: {
@@ -302,6 +337,21 @@ export async function generateConsultantReport(
       console.error("Consultant LLM overlay failed, falling back to deterministic:", e);
     }
   }
+
+  // Generate V2 Dynamic Report Sections
+  const compositionContext: CompositionContext = {
+    reportDepth,
+    businessContext,
+    diagnostics,
+    pageSpeed: pageSpeedData || { lcp: 0, performanceScore: 0, mobileScore: 0, fcp: 0, cls: 0, speedIndex: 0, ttfb: 0, hasImages: false, imageOptimizationScore: 0, renderBlockingResources: 0, passed: false },
+    scrapedData,
+    classification,
+    gaps,
+    recommendations: recommendationsV2,
+    reasoningTraces: baseReport.reasoningTraces as NonNullable<CompositionContext["reasoningTraces"]>
+  };
+
+  baseReport.reportSections = generateReportSections(compositionContext, plan);
 
   return baseReport;
 }

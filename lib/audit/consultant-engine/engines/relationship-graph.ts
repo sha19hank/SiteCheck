@@ -1,6 +1,7 @@
 import { EvaluatedGap, RelationshipEdge, IntelligenceEngineResult } from "@/types";
 
 export function buildRelationshipGraph(gaps: EvaluatedGap[]): IntelligenceEngineResult<RelationshipEdge[]> {
+  const startTime = performance.now();
   const edges: RelationshipEdge[] = [];
   const evidence: string[] = [];
   
@@ -87,10 +88,19 @@ export function buildRelationshipGraph(gaps: EvaluatedGap[]): IntelligenceEngine
   const avgGapConfidence = gaps.length > 0 ? gaps.reduce((acc, g) => acc + g.confidence, 0) / gaps.length : 1;
   const overallConfidence = edges.length > 0 ? avgGapConfidence * 0.9 : 1.0;
 
+  const endTime = performance.now();
+
   return {
     data: edges,
     confidence: overallConfidence,
     evidence,
+    engineMetadata: {
+      engineName: "RelationshipGraphEngine",
+      version: "1.1.0",
+      executionTimeMs: Math.round(endTime - startTime),
+      confidence: overallConfidence,
+      evidenceProcessed: edges.length
+    },
     debugMetadata: {
       edgeCount: edges.length,
       nodeCount: gaps.length

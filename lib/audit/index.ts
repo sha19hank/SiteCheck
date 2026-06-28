@@ -77,10 +77,7 @@ export async function runAudit(request: AuditRequest): Promise<AuditRecord> {
     websiteUnderstanding,
     categoryAudit,
     pageSpeedData,
-    {
-      level: auditConfidence,
-      metrics: { evidenceCoverage, understandingCompleteness, scrapeQuality: scrapeDiagnostics.scrapeQuality, classificationConfidence: classification.confidence }
-    }
+    "enterprise"
   );
   const geEnd = performance.now();
 

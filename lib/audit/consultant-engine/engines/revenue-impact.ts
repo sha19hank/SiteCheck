@@ -4,6 +4,7 @@ export function estimateRevenueImpact(
   gaps: EvaluatedGap[],
   context: BusinessContext
 ): IntelligenceEngineResult<Map<string, RevenueImpact>> {
+  const startTime = performance.now();
   const impacts = new Map<string, RevenueImpact>();
   const engineEvidence: string[] = [];
 
@@ -53,22 +54,31 @@ export function estimateRevenueImpact(
     impacts.set(gap.id, {
       estimateLow,
       estimateHigh,
+      trafficAssumption: `${estimatedMonthlyTraffic} visitors/mo`,
+      conversionAssumption: `${(baseConversionRate * 100).toFixed(1)}% base, +${(expectedImprovementRate * 100).toFixed(0)}% relative lift`,
+      averageValueAssumption: `$${averageValue} LTV/AOV`,
+      formulaUsed: `Traffic * ConvRate * Improvement * AvgValue`,
+      confidence: 0.6, // Low-Medium as requested
+      assumptionReasoning: `Proxies derived from Growth Stage (${context.growthStage}) and Pricing Strategy (${context.pricingStrategy}).`,
       trafficTier,
-      assumptions: [
-        `Traffic estimated at ${trafficTier} based on growth stage (${context.growthStage}).`,
-        `Assumed base conversion rate of ${(baseConversionRate * 100).toFixed(1)}%.`,
-        `Expected relative improvement of ${(expectedImprovementRate * 100).toFixed(0)}% from fixing this issue.`,
-        `Average customer value estimated at $${averageValue}.`
-      ]
     });
     
     engineEvidence.push(`Estimated revenue impact for '${gap.id}': $${estimateLow} - $${estimateHigh}/mo.`);
   }
 
+  const endTime = performance.now();
+
   return {
     data: impacts,
-    confidence: 0.7, // Revenue estimates are inherently uncertain proxies
+    confidence: 0.6, // Revenue estimates are inherently uncertain proxies
     evidence: engineEvidence,
+    engineMetadata: {
+      engineName: "RevenueImpactEngine",
+      version: "1.2.0",
+      executionTimeMs: Math.round(endTime - startTime),
+      confidence: 0.6,
+      evidenceProcessed: gaps.length
+    },
     debugMetadata: {
       calculatedImpacts: impacts.size,
       trafficTier,

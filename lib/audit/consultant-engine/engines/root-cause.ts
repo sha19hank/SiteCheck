@@ -4,6 +4,7 @@ export function inferRootCauses(
   gaps: EvaluatedGap[],
   edges: RelationshipEdge[]
 ): IntelligenceEngineResult<RootCause[]> {
+  const startTime = performance.now();
   const rootCauses: RootCause[] = [];
   const engineEvidence: string[] = [];
   
@@ -101,10 +102,19 @@ export function inferRootCauses(
 
   const overallConfidence = rootCauses.length > 0 ? 0.85 : 1.0; // 1.0 if no root causes (perfectly independent gaps)
 
+  const endTime = performance.now();
+
   return {
     data: rootCauses,
     confidence: overallConfidence,
     evidence: engineEvidence,
+    engineMetadata: {
+      engineName: "RootCauseEngine",
+      version: "1.1.0",
+      executionTimeMs: Math.round(endTime - startTime),
+      confidence: overallConfidence,
+      evidenceProcessed: edges.length
+    },
     debugMetadata: {
       graphNodes: gaps.length,
       causalEdges: causalEdges.length,
