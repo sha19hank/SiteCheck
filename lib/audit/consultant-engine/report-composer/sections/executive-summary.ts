@@ -36,7 +36,27 @@ sectionRegistry.register({
       ? `The most significant untapped opportunity is ${topOpportunity.title.toLowerCase()}, which leverages existing assets for immediate growth.`
       : "Focus should remain on foundational conversion optimization before seeking expansion opportunities.";
 
+    const overallScore = context.scores?.overall || 0;
+    let growthStage = "Unknown";
+    let growthStageExplanation = "";
+    if (overallScore >= 90) {
+      growthStage = "Leader";
+      growthStageExplanation = "The website is highly optimized and sets the standard in its category.";
+    } else if (overallScore >= 70) {
+      growthStage = "Optimized";
+      growthStageExplanation = "The foundation is strong, with focused opportunities for advanced scaling.";
+    } else if (overallScore >= 40) {
+      growthStage = "Growing";
+      growthStageExplanation = "Traction is established, but structural friction points are limiting growth.";
+    } else {
+      growthStage = "Emerging";
+      growthStageExplanation = "The digital presence requires immediate foundational improvements before scaling.";
+    }
+
     const content = {
+      growthScore: overallScore,
+      growthStage,
+      growthStageExplanation,
       currentState,
       topStrength,
       bottleneck,

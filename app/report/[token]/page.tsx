@@ -10,8 +10,15 @@ import PaymentModal       from "@/components/report/PaymentModal";
 import ComparisonBanner   from "@/components/report/ComparisonBanner";
 import ScreenshotPanel    from "@/components/report/ScreenshotPanel";
 import { cn, formatDate } from "@/lib/utils";
-import type { PartialReport, ScreenshotData } from "@/types";
+import type { PartialReport, ScreenshotData, ConsultantReport } from "@/types";
 import DebugPanel from "@/components/report/DebugPanel";
+
+// V2 Imports
+import ReportLayout from "@/components/report/v2/ReportLayout";
+import ReportHeader from "@/components/report/v2/ReportHeader";
+import DynamicSectionRenderer from "@/components/report/v2/renderers/DynamicSectionRenderer";
+import { injectVirtualSections } from "@/components/report/v2/utils/v2-adapter";
+import PremiumUpgradeWall from "@/components/report/v2/PremiumUpgradeWall";
 
 // ─── Share button ─────────────────────────────────────────────────────────────
 function ShareButton({ token }: { token: string }) {
@@ -184,78 +191,11 @@ function StatusBanner({ report }: { report: PartialReport }) {
   );
 }
 
-// ─── Report content ────────────────────────────────────────────────────────────
-function ReportContent() {
-  const params = useParams<{ token: string }>();
-  const token  = params.token;
-
-  const [report,       setReport]       = useState<PartialReport | null>(null);
-  const [auditId,      setAuditId]      = useState("");
-  const [shareToken,   setShareToken]   = useState(token);
-  const [screenshots,  setScreenshots]  = useState<ScreenshotData | null>(null);
-  const [loading,      setLoading]      = useState(true);
-  const [error,        setError]        = useState("");
-  const [showPayment,  setShowPayment]  = useState(false);
-  const [justUnlocked, setJustUnlocked] = useState(false);
-  const [debugData,    setDebugData]    = useState<any>(null);
-  const [isPrintMode,  setIsPrintMode]  = useState(false);
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setIsPrintMode(new URLSearchParams(window.location.search).get("print") === "true");
-    }
-  }, []);
-
-  const fetchReport = useCallback(() => {
-    fetch(`/api/audit/${token}`)
-      .then(r => r.json() as Promise<{
-        report?: PartialReport;
-        auditId?: string;
-        shareToken?: string;
-        screenshots?: ScreenshotData;
-        debugData?: any;
-        error?: string;
-      }>)
-      .then(data => {
-        if (!data.report) { setError(data.error ?? "Report not found"); return; }
-        setReport(data.report);
-        setAuditId(data.auditId ?? "");
-        setShareToken(data.shareToken ?? token);
-        if (data.screenshots) setScreenshots(data.screenshots);
-        if (data.debugData) setDebugData(data.debugData);
-      })
-      .catch(() => setError("Failed to load report"))
-      .finally(() => setLoading(false));
-  }, [token]);
-
-  useEffect(() => { fetchReport(); }, [fetchReport]);
-
-  function handleUnlockSuccess() {
-    setShowPayment(false);
-    setJustUnlocked(true);
-    setLoading(true);
-    setTimeout(() => fetchReport(), 800);
-  }
-
-  if (loading) return <Skeleton />;
-
-  if (error) return (
-    <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="text-center max-w-sm">
-        <div className="w-14 h-14 rounded-2xl bg-surface-100 flex items-center justify-center mx-auto mb-5">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-7 h-7 text-surface-400">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-          </svg>
-        </div>
-        <p className="text-base font-medium text-surface-700 mb-2">Report not found</p>
-        <p className="text-sm text-surface-500 mb-6">{error}</p>
-        <Link href="/" className="btn-primary">Run a new audit</Link>
-      </div>
-    </div>
-  );
-
-  if (!report) return null;
-
+// ─── V1 Legacy Render ────────────────────────────────────────────────────────
+function ReportContentV1({ 
+  report, auditId, shareToken, screenshots, showPayment, setShowPayment, 
+  justUnlocked, handleUnlockSuccess, isPrintMode, debugData, token 
+}: any) {
   const { scores, consultantSummary, overallNarrative, quickWins, sectionInsights, isPaid, domain, url, createdAt } = report;
 
   return (
@@ -382,7 +322,7 @@ function ReportContent() {
               </span>
             </div>
             <div className="space-y-3.5">
-              {quickWins.map((win, i) => (
+              {quickWins?.map((win: any, i: number) => (
                 <div key={i} className={`animate-fade-up fill-both delay-${(i+1)*100}`}>
                   <QuickWinCard win={win} rank={i + 1} />
                 </div>
@@ -395,19 +335,19 @@ function ReportContent() {
             <h2 className="text-sm font-semibold text-surface-900 mb-4">Detailed analysis</h2>
             <div className="space-y-3">
               <SectionInsightCard
-                insight={sectionInsights.performance}
+                insight={sectionInsights?.performance}
                 score={scores.performance}
                 dimension="performance"
                 forceExpanded={isPrintMode}
               />
               <SectionInsightCard
-                insight={sectionInsights.trust}
+                insight={sectionInsights?.trust}
                 score={scores.trust}
                 dimension="trust"
                 forceExpanded={isPrintMode}
               />
               <SectionInsightCard
-                insight={sectionInsights.clarity}
+                insight={sectionInsights?.clarity}
                 score={scores.clarity}
                 dimension="clarity"
                 locked={!isPaid}
@@ -415,7 +355,7 @@ function ReportContent() {
                 forceExpanded={isPrintMode}
               />
               <SectionInsightCard
-                insight={sectionInsights.conversion}
+                insight={sectionInsights?.conversion}
                 score={scores.conversion}
                 dimension="conversion"
                 locked={!isPaid}
@@ -472,6 +412,184 @@ function ReportContent() {
       </div>
     </>
   );
+}
+
+// ─── V2 Render ─────────────────────────────────────────────────────────────
+function ReportContentV2({ 
+  report, auditId, shareToken, showPayment, setShowPayment, justUnlocked, handleUnlockSuccess, isPrintMode, debugData 
+}: any) {
+  const sections = report.consultantReport ? injectVirtualSections(report.consultantReport) : [];
+
+  return (
+    <>
+      {showPayment && !isPrintMode && (
+        <PaymentModal
+          auditId={auditId}
+          domain={report.domain}
+          onSuccess={handleUnlockSuccess}
+          onClose={() => setShowPayment(false)}
+        />
+      )}
+
+      {justUnlocked && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-slide-up fill-both">
+          <div className="bg-emerald-600 text-white text-sm font-medium px-5 py-3 rounded-full shadow-lg flex items-center gap-2">
+            <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/>
+            </svg>
+            Full report unlocked!
+          </div>
+        </div>
+      )}
+
+      <div className="min-h-screen pb-24 print:pb-0 bg-slate-50/50">
+        {/* Sticky top bar (same as V1) */}
+        <div className="sticky top-0 z-40 bg-white/80 backdrop-blur-xl border-b border-surface-200/60 shadow-[0_1px_0_0_rgba(0,0,0,0.04)] print:hidden">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 h-14 flex items-center gap-3">
+            <Link href="/" className="shrink-0 flex items-center gap-2 mr-1">
+              <div className="w-6 h-6 rounded-md bg-brand-gradient flex items-center justify-center">
+                <svg viewBox="0 0 20 20" fill="none" className="w-3.5 h-3.5">
+                  <circle cx="10" cy="10" r="7" stroke="white" strokeWidth="2"/>
+                  <path d="M7 10l2 2 4-4" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
+            </Link>
+
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-surface-500 truncate">{report.url || report.domain}</p>
+            </div>
+
+            <div className="flex items-center gap-1.5 shrink-0">
+              <ShareButton token={shareToken} />
+              <PDFButton auditId={auditId} isPaid={report.isPaid} />
+              {!report.isPaid && (
+                <button onClick={() => setShowPayment(true)} className="btn-primary text-xs h-8 px-3">
+                  Unlock full
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <ReportLayout 
+          sections={sections} 
+          header={<ReportHeader report={report} />}
+        >
+          {sections.map((section: any, index: number) => {
+            const safeKey = section.id || `fallback-section-${index}`;
+            return <DynamicSectionRenderer key={safeKey} section={section} />;
+          })}
+
+          {!report.isPaid && (
+            <PremiumUpgradeWall 
+              onUnlock={() => setShowPayment(true)} 
+              price={process.env.NEXT_PUBLIC_REPORT_PRICE_INR} 
+            />
+          )}
+
+          <div className="flex items-center justify-between pt-4 pb-2 print:hidden mt-8">
+            <Link href="/" className="btn-ghost text-xs">← Audit another website</Link>
+            <p className="text-xs text-surface-300">
+              Powered by <Link href="/" className="hover:text-surface-500 transition-colors">SiteCheck AI</Link>
+            </p>
+          </div>
+
+          {process.env.NODE_ENV === "development" && debugData && (
+            <div className="print:hidden mt-8">
+              <DebugPanel data={debugData} scores={report.scores} />
+            </div>
+          )}
+        </ReportLayout>
+      </div>
+    </>
+  );
+}
+
+// ─── Main Controller ─────────────────────────────────────────────────────────
+function ReportContent() {
+  const params = useParams<{ token: string }>();
+  const token  = params.token;
+
+  const [report,       setReport]       = useState<PartialReport | null>(null);
+  const [auditId,      setAuditId]      = useState("");
+  const [shareToken,   setShareToken]   = useState(token);
+  const [screenshots,  setScreenshots]  = useState<ScreenshotData | null>(null);
+  const [loading,      setLoading]      = useState(true);
+  const [error,        setError]        = useState("");
+  const [showPayment,  setShowPayment]  = useState(false);
+  const [justUnlocked, setJustUnlocked] = useState(false);
+  const [debugData,    setDebugData]    = useState<any>(null);
+  const [isPrintMode,  setIsPrintMode]  = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setIsPrintMode(new URLSearchParams(window.location.search).get("print") === "true");
+    }
+  }, []);
+
+  const fetchReport = useCallback(() => {
+    fetch(`/api/audit/${token}`)
+      .then(r => r.json() as Promise<{
+        report?: PartialReport;
+        auditId?: string;
+        shareToken?: string;
+        screenshots?: ScreenshotData;
+        debugData?: any;
+        error?: string;
+      }>)
+      .then(data => {
+        if (!data.report) { setError(data.error ?? "Report not found"); return; }
+        setReport(data.report);
+        setAuditId(data.auditId ?? "");
+        setShareToken(data.shareToken ?? token);
+        if (data.screenshots) setScreenshots(data.screenshots);
+        if (data.debugData) setDebugData(data.debugData);
+      })
+      .catch(() => setError("Failed to load report"))
+      .finally(() => setLoading(false));
+  }, [token]);
+
+  useEffect(() => { fetchReport(); }, [fetchReport]);
+
+  function handleUnlockSuccess() {
+    setShowPayment(false);
+    setJustUnlocked(true);
+    setLoading(true);
+    setTimeout(() => fetchReport(), 800);
+  }
+
+  if (loading) return <Skeleton />;
+
+  if (error) return (
+    <div className="min-h-screen flex items-center justify-center px-4">
+      <div className="text-center max-w-sm">
+        <div className="w-14 h-14 rounded-2xl bg-surface-100 flex items-center justify-center mx-auto mb-5">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" className="w-7 h-7 text-surface-400">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+          </svg>
+        </div>
+        <p className="text-base font-medium text-surface-700 mb-2">Report not found</p>
+        <p className="text-sm text-surface-500 mb-6">{error}</p>
+        <Link href="/" className="btn-primary">Run a new audit</Link>
+      </div>
+    </div>
+  );
+
+  if (!report) return null;
+
+  const props = {
+    report, auditId, shareToken, screenshots, showPayment, setShowPayment,
+    justUnlocked, handleUnlockSuccess, isPrintMode, debugData, token: params.token
+  };
+
+  const hasV2 = report.consultantReport?.reportSections && report.consultantReport.reportSections.length > 0;
+
+  if (hasV2) {
+    return <ReportContentV2 {...props} />;
+  } else {
+    console.warn("Legacy report detected. Rendering V1 compatibility mode.");
+    return <ReportContentV1 {...props} />;
+  }
 }
 
 export default function ReportPage() {

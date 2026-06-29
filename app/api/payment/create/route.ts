@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
       audit_id:     auditId,
       provider:     "razorpay",
       provider_id:  order.id,
-      plan:         "report_unlock",
+      plan:         "pro",
       amount_paise: amountPaise,
       status:       "pending",
     });

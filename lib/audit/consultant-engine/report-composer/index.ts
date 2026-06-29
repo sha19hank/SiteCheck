@@ -12,6 +12,10 @@ import "./sections/competitive-positioning";
 import "./sections/advisor-narrative";
 import "./sections/opportunities";
 import "./sections/roadmap-builder";
+import "./sections/score-breakdown";
+import "./sections/evidence-ledger";
+import "./sections/priority-matrix";
+import "./sections/audit-appendix";
 
 export function generateReportSections(
   context: CompositionContext,

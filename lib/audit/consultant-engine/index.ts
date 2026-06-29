@@ -187,7 +187,8 @@ export async function generateConsultantReport(
   const evidenceLedger: EvidenceItem[] = allInsights.map(i => ({
     finding: i.problem,
     source: i.evidence[0] || "Automated Scan",
-    impact: i.businessImpact
+    impact: i.businessImpact,
+    relatedRecommendation: i.recommendedFix
   }));
 
   const buildSection = (dimension: keyof AuditScores): SectionAnalysis => {
@@ -348,6 +349,9 @@ export async function generateConsultantReport(
     classification,
     gaps,
     recommendations: recommendationsV2,
+    scores,
+    evidenceLedger: baseReport.evidenceLedger,
+    priorityMatrix,
     reasoningTraces: baseReport.reasoningTraces as NonNullable<CompositionContext["reasoningTraces"]>
   };
 

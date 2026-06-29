@@ -45,6 +45,7 @@ export async function GET(
     aiFailureReasonMessage: data.ai_failure_reason_message,
     auditConfidence: data.audit_confidence,
     scrapeDiagnostics: data.scrape_diagnostics,
+    consultantReport: data.consultant_report,
   };
 
   const response: any = {

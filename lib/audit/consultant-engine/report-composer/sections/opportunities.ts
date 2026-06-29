@@ -5,7 +5,7 @@ sectionRegistry.register({
   id: "opportunities-section",
   name: "Growth Opportunities",
   priority: 60,
-  requiredPlan: "report_unlock",
+  requiredPlan: "free",
   applicableWebsiteTypes: "ALL",
   minReportDepth: "STANDARD",
   generate: (context: CompositionContext): ReportSection | null => {
@@ -15,7 +15,7 @@ sectionRegistry.register({
       return null;
     }
 
-    const content = reasoningTraces.opportunities.map(opp => ({
+    const content = reasoningTraces.opportunities.slice(0, 3).map(opp => ({
       title: opp.title,
       description: opp.description,
       impact: "High",
@@ -26,7 +26,7 @@ sectionRegistry.register({
     return {
       id: "opportunities-section",
       type: "cards",
-      title: "Growth Opportunities",
+      title: "Key Growth Opportunities",
       content,
       metadata: {
         confidence: 70,

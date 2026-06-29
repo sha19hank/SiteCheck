@@ -398,6 +398,7 @@ export interface EvidenceItem {
   finding: string;
   source: string;
   impact: string;
+  relatedRecommendation?: string;
 }
 
 // ─── Phase 5.2A: Consultant Intelligence Engine Types ──────────────────────
@@ -751,6 +752,9 @@ export interface CompositionContext {
   classification: WebsiteClassification;
   gaps: EvaluatedGap[];
   recommendations: RecommendationV2[];
+  scores: AuditScores;
+  evidenceLedger: EvidenceItem[];
+  priorityMatrix: PriorityMatrix;
   reasoningTraces: {
     rootCauses: RootCause[];
     crossPageFindings: CrossPageFinding[];
@@ -789,7 +793,7 @@ export interface AuditMetricSummary {
 
 // ─── Payment ──────────────────────────────────────────────────────────────────
 
-export type PlanType = "free" | "report_unlock" | "pro";
+export type PlanType = "free" | "pro";
 
 export interface PaymentRecord {
   id: string;
