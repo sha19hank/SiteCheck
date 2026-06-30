@@ -4,7 +4,7 @@ import { CompositionContext, ReportSection } from "@/types";
 sectionRegistry.register({
   id: "audit-appendix",
   name: "Technical Appendix",
-  priority: 50, // Very end
+  priority: 50,
   requiredPlan: "report_unlock",
   applicableWebsiteTypes: "ALL",
   minReportDepth: "STANDARD",

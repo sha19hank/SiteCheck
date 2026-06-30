@@ -17,34 +17,50 @@ export function injectVirtualSections(report: ConsultantReport, isPaid: boolean)
   const sections = [...(report.reportSections || [])];
 
   if (report.growthOpportunities && report.growthOpportunities.length > 0) {
-    const hasRecommendationsSection = sections.some(s => s.id === "actionable-recommendations" || s.id === "featured-recommendations");
+    const hasFeatured = sections.some(s => s.id === "featured-recommendations");
+    const hasStrategic = sections.some(s => s.id === "strategic-recommendations");
     
-    if (!hasRecommendationsSection) {
-      // Find the index of the roadmap so we can insert right before it if it exists
-      const roadmapIndex = sections.findIndex(s => s.id === "roadmap-builder");
-      
-      const recommendations = isPaid 
-        ? report.growthOpportunities 
-        : report.growthOpportunities.slice(0, 3);
-        
-      const recommendationsSection: ReportSection = {
-        id: isPaid ? "actionable-recommendations" : "featured-recommendations",
+    // Find where to insert (before roadmap if it exists)
+    const roadmapIndex = sections.findIndex(s => s.id === "roadmap-builder");
+    
+    const additions: ReportSection[] = [];
+
+    // Always inject Featured (Top 3)
+    if (!hasFeatured) {
+      additions.push({
+        id: "featured-recommendations",
         type: "cards",
-        title: isPaid ? "Complete Strategic Recommendations" : "Featured Recommendations",
-        content: recommendations,
+        title: "Featured Recommendations",
+        content: report.growthOpportunities.slice(0, 3),
         metadata: {
           confidence: report.reportConfidence?.metrics?.classificationConfidence ? Math.round(report.reportConfidence.metrics.classificationConfidence * 100) : 80,
-          evidenceCount: recommendations.length,
+          evidenceCount: Math.min(3, report.growthOpportunities.length),
           generatedFrom: ["OpportunityEngine", "RootCauseEngine"],
-          reasoningSummary: "Prioritized strategic recommendations directly extracted from the Consultant Engine's root cause and opportunity analysis."
+          reasoningSummary: "The top 3 priority recommendations to address immediately."
         }
-      };
+      });
+    }
 
-      if (roadmapIndex !== -1) {
-        sections.splice(roadmapIndex, 0, recommendationsSection);
-      } else {
-        sections.push(recommendationsSection);
-      }
+    // Conditionally inject Strategic (All) if isPaid
+    if (isPaid && !hasStrategic) {
+      additions.push({
+        id: "strategic-recommendations",
+        type: "cards",
+        title: "Strategic Recommendations",
+        content: report.growthOpportunities,
+        metadata: {
+          confidence: report.reportConfidence?.metrics?.classificationConfidence ? Math.round(report.reportConfidence.metrics.classificationConfidence * 100) : 80,
+          evidenceCount: report.growthOpportunities.length,
+          generatedFrom: ["OpportunityEngine", "RootCauseEngine"],
+          reasoningSummary: "The complete, prioritized catalogue of all recommendations."
+        }
+      });
+    }
+
+    if (roadmapIndex !== -1) {
+      sections.splice(roadmapIndex, 0, ...additions);
+    } else {
+      sections.push(...additions);
     }
   }
 

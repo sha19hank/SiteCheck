@@ -4,7 +4,7 @@ import { CompositionContext, ReportSection } from "@/types";
 sectionRegistry.register({
   id: "evidence-ledger",
   name: "Evidence Ledger",
-  priority: 88, // Before Root Cause Analysis
+  priority: 75,
   requiredPlan: "report_unlock",
   applicableWebsiteTypes: "ALL",
   minReportDepth: "STANDARD",

@@ -1,3 +1,8 @@
+/**
+ * DORMANT FOR MILESTONE 1
+ * This section provides consultant intelligence (Advisor Narrative) but is not exposed in the current UI.
+ * Retained for future premium/enterprise tiers.
+ */
 import { sectionRegistry } from "../registry";
 import { CompositionContext, ReportSection } from "@/types";
 

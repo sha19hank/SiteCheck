@@ -188,7 +188,8 @@ export async function generateConsultantReport(
     finding: i.problem,
     source: i.evidence[0] || "Automated Scan",
     impact: i.businessImpact,
-    relatedRecommendation: i.recommendedFix
+    relatedRecommendation: i.recommendedFix,
+    recommendationId: i.id
   }));
 
   const buildSection = (dimension: keyof AuditScores): SectionAnalysis => {

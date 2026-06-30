@@ -1,4 +1,5 @@
 import React from "react";
+import { REPORT_STRUCTURE } from "./utils/reportStructure";
 
 interface PremiumUpgradeWallProps {
   onUnlock: () => void;
@@ -53,30 +54,12 @@ export default function PremiumUpgradeWall({ onUnlock, price = "499" }: PremiumU
             </p>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-slate-700 font-medium mb-8 text-left w-full max-w-md mx-auto">
-              <div className="flex items-center gap-2">
-                <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-emerald-500 shrink-0"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>
-                Complete Strategic Recommendations
-              </div>
-              <div className="flex items-center gap-2">
-                <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-emerald-500 shrink-0"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>
-                Root Cause Analysis
-              </div>
-              <div className="flex items-center gap-2">
-                <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-emerald-500 shrink-0"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>
-                Growth Score Breakdown
-              </div>
-              <div className="flex items-center gap-2">
-                <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-emerald-500 shrink-0"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>
-                Opportunity Prioritization
-              </div>
-              <div className="flex items-center gap-2">
-                <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-emerald-500 shrink-0"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>
-                Evidence Ledger
-              </div>
-              <div className="flex items-center gap-2">
-                <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-emerald-500 shrink-0"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>
-                Execution Roadmap
-              </div>
+              {REPORT_STRUCTURE.PREMIUM.map((section) => (
+                <div key={section.id} className="flex items-center gap-2">
+                  <svg viewBox="0 0 20 20" fill="currentColor" className="w-5 h-5 text-emerald-500 shrink-0"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>
+                  {section.title}
+                </div>
+              ))}
             </div>
             
             <button onClick={onUnlock} className="btn-primary w-full sm:w-auto px-10 h-14 text-base shadow-xl shadow-brand-500/20 hover:-translate-y-0.5 transition-all">

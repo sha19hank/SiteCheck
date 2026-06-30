@@ -49,10 +49,15 @@ function RecommendationCardLayout({
             )}>
               {rec.priorityScore ? `Priority ${rec.priorityScore}` : `${rec.priority || 'Low'} Priority`}
             </span>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 border border-transparent">
+            {rec.category && (
+              <span className="text-[10px] font-bold uppercase tracking-widest text-brand-600 border border-transparent bg-brand-50 px-2 py-0.5 rounded">
+                {rec.category}
+              </span>
+            )}
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 border border-transparent px-2 py-0.5">
               Impact: {rec.businessImpact || "High"}
             </span>
-            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 border border-transparent">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 border border-transparent px-2 py-0.5">
               Effort: {rec.estimatedTime || rec.effortV2 || rec.effort || "Medium"}
             </span>
           </div>
@@ -139,6 +144,13 @@ function RecommendationCardLayout({
                 </div>
               </div>
             )}
+
+            <div className="pt-2 print:hidden">
+              <a href="#section-audit-snapshot" className="text-xs font-semibold text-slate-500 hover:text-slate-800 hover:underline underline-offset-4 flex items-center gap-1">
+                <svg viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd"/></svg>
+                Review related metrics
+              </a>
+            </div>
 
           </div>
         </div>

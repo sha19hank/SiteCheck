@@ -5,11 +5,11 @@ import { sectionRegistry } from "./registry";
 import "./sections/audit-snapshot";
 import "./sections/executive-summary";
 import "./sections/60-second-assessment";
-import "./sections/growth-bottleneck";
+// import "./sections/growth-bottleneck"; // DORMANT for Milestone 1
 import "./sections/root-cause-narrative";
-import "./sections/messaging-audit";
-import "./sections/competitive-positioning";
-import "./sections/advisor-narrative";
+// import "./sections/messaging-audit"; // DORMANT for Milestone 1
+// import "./sections/competitive-positioning"; // DORMANT for Milestone 1
+// import "./sections/advisor-narrative"; // DORMANT for Milestone 1
 import "./sections/opportunities";
 import "./sections/roadmap-builder";
 import "./sections/score-breakdown";

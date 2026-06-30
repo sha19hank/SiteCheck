@@ -8,8 +8,8 @@ export default function RecommendationListRenderer({ section }: { section: Repor
 
   return (
     <div className="animate-fade-up">
-      <div className="mb-12 page-break-inside-avoid">
-        <h2 className="text-2xl font-bold text-slate-900 mb-6 pb-4 border-b border-slate-100">{section.title}</h2>
+      <div className="mb-10 page-break-inside-avoid">
+        <h2 className="text-2xl font-bold text-slate-900 mb-4 pb-4 border-b border-slate-100">{section.title}</h2>
         {section.metadata?.reasoningSummary && (
           <p className="text-lg text-slate-700 leading-relaxed">{section.metadata.reasoningSummary}</p>
         )}

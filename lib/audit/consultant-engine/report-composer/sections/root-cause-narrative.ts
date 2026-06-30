@@ -3,8 +3,8 @@ import { CompositionContext, ReportSection } from "@/types";
 
 sectionRegistry.register({
   id: "root-cause-narrative",
-  name: "Root Cause Narratives",
-  priority: 85,
+  name: "Root Cause Analysis",
+  priority: 70,
   requiredPlan: "report_unlock",
   applicableWebsiteTypes: "ALL",
   minReportDepth: "STANDARD",

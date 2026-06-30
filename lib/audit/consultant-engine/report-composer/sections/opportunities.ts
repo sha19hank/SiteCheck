@@ -3,8 +3,8 @@ import { CompositionContext, ReportSection } from "@/types";
 
 sectionRegistry.register({
   id: "opportunities-section",
-  name: "Growth Opportunities",
-  priority: 60,
+  name: "Key Growth Opportunities",
+  priority: 85,
   requiredPlan: "free",
   applicableWebsiteTypes: "ALL",
   minReportDepth: "STANDARD",

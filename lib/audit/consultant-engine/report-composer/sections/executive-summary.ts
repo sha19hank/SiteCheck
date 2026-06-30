@@ -4,7 +4,7 @@ import { CompositionContext, ReportSection } from "@/types";
 sectionRegistry.register({
   id: "executive-summary",
   name: "Executive Summary",
-  priority: 99, // Second highest priority, just after Audit Snapshot
+  priority: 95, // After Audit Snapshot
   requiredPlan: "free",
   applicableWebsiteTypes: "ALL",
   minReportDepth: "BASIC",

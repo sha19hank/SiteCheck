@@ -3,8 +3,8 @@ import { CompositionContext, ReportSection } from "@/types";
 
 sectionRegistry.register({
   id: "roadmap-builder",
-  name: "Actionable Roadmap",
-  priority: 50,
+  name: "Implementation Roadmap",
+  priority: 55,
   requiredPlan: "report_unlock",
   applicableWebsiteTypes: "ALL",
   minReportDepth: "STANDARD",

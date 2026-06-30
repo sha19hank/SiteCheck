@@ -3,8 +3,8 @@ import { CompositionContext, ReportSection } from "@/types";
 
 sectionRegistry.register({
   id: "priority-matrix",
-  name: "Priority Matrix",
-  priority: 75, // After Score Breakdown, Before Roadmap
+  name: "Opportunity Prioritization",
+  priority: 65,
   requiredPlan: "report_unlock",
   applicableWebsiteTypes: "ALL",
   minReportDepth: "STANDARD",

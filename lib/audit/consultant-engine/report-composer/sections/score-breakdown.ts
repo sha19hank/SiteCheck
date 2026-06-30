@@ -4,7 +4,7 @@ import { CompositionContext, ReportSection } from "@/types";
 sectionRegistry.register({
   id: "score-breakdown",
   name: "Growth Score Breakdown",
-  priority: 85, // After Root Cause Analysis
+  priority: 80,
   requiredPlan: "report_unlock",
   applicableWebsiteTypes: "ALL",
   minReportDepth: "STANDARD",

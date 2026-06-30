@@ -1,9 +1,20 @@
 import { ReportSection } from "@/types";
 
-export default function RoadmapRenderer({ section }: { section: ReportSection }) {
-  const roadmapData = section.content as any;
+export default function RoadmapRenderer({ section }: { section?: ReportSection }) {
+  const roadmapData = section?.content as any;
   
-  if (!roadmapData || (!roadmapData.thirtyDay && !roadmapData.ninetyDay)) return null;
+  if (!roadmapData || (!roadmapData.thirtyDay && !roadmapData.ninetyDay)) {
+    return (
+      <div className="animate-fade-up">
+        <div className="mb-10 page-break-inside-avoid">
+          <h2 className="text-2xl font-bold text-slate-900 mb-4 pb-4 border-b border-slate-100">Implementation Roadmap</h2>
+          <div className="p-6 border border-dashed border-slate-300 bg-slate-50 rounded-xl text-slate-600 leading-relaxed">
+            No implementation roadmap could be generated.
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const renderPhase = (title: string, items: any[]) => {
     if (!items || items.length === 0) return null;
@@ -34,6 +45,14 @@ export default function RoadmapRenderer({ section }: { section: ReportSection })
                 <span className="text-slate-700 font-medium">{item.impact || "High"}</span>
               </div>
             </div>
+            
+            {item.id && (
+              <div className="mt-4 print:hidden">
+                <a href={`#rec-${item.id}`} className="text-xs font-semibold text-brand-600 hover:text-brand-700 hover:underline underline-offset-4">
+                  → View full strategy
+                </a>
+              </div>
+            )}
           </div>
           );
         })}
@@ -43,11 +62,11 @@ export default function RoadmapRenderer({ section }: { section: ReportSection })
 
   return (
     <div className="animate-fade-up">
-      <div className="mb-12 page-break-inside-avoid">
-        <h2 className="text-2xl font-bold text-slate-900 mb-6 pb-4 border-b border-slate-100">{section.title}</h2>
-        {section.metadata?.reasoningSummary && (
-          <p className="text-lg text-slate-700 leading-relaxed">{section.metadata.reasoningSummary}</p>
-        )}
+      <div className="mb-10 page-break-inside-avoid">
+        <h2 className="text-2xl font-bold text-slate-900 mb-4 pb-4 border-b border-slate-100">{section?.title}</h2>
+        <p className="text-lg text-slate-700 leading-relaxed">
+          A phased execution plan designed to maximize growth with minimal wasted effort.
+        </p>
       </div>
 
       <div className="pl-2">

@@ -1,14 +1,25 @@
 import React from "react";
 import { ReportSection } from "@/types";
 
-export default function OpportunityListRenderer({ section }: { section: ReportSection }) {
-  const content = section.content as any[];
-  if (!content || !Array.isArray(content) || content.length === 0) return null;
+export default function OpportunityListRenderer({ section }: { section?: ReportSection }) {
+  const content = section?.content as any[];
+  if (!content || !Array.isArray(content) || content.length === 0) {
+    return (
+      <div className="animate-fade-up">
+        <div className="mb-10 page-break-inside-avoid">
+          <h2 className="text-2xl font-bold text-slate-900 mb-4 pb-4 border-b border-slate-100">Key Growth Opportunities</h2>
+          <div className="p-6 border border-dashed border-slate-300 bg-slate-50 rounded-xl text-slate-600 leading-relaxed">
+            No specific growth opportunities were isolated during this audit.
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-fade-up">
       <div className="mb-8 page-break-inside-avoid">
-        <h2 className="text-2xl font-bold text-slate-900 mb-6 pb-4 border-b border-slate-100">{section.title}</h2>
+        <h2 className="text-2xl font-bold text-slate-900 mb-6 pb-4 border-b border-slate-100">{section?.title}</h2>
       </div>
 
       <div className="grid sm:grid-cols-2 gap-4">

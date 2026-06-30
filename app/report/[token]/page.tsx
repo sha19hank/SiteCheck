@@ -19,6 +19,7 @@ import ReportHeader from "@/components/report/v2/ReportHeader";
 import DynamicSectionRenderer from "@/components/report/v2/renderers/DynamicSectionRenderer";
 import { injectVirtualSections } from "@/components/report/v2/utils/v2-adapter";
 import PremiumUpgradeWall from "@/components/report/v2/PremiumUpgradeWall";
+import { REPORT_STRUCTURE } from "@/components/report/v2/utils/reportStructure";
 
 // ─── Share button ─────────────────────────────────────────────────────────────
 function ShareButton({ token }: { token: string }) {
@@ -418,7 +419,9 @@ function ReportContentV1({
 function ReportContentV2({ 
   report, auditId, shareToken, showPayment, setShowPayment, justUnlocked, handleUnlockSuccess, isPrintMode, debugData 
 }: any) {
-  const sections = report.consultantReport ? injectVirtualSections(report.consultantReport) : [];
+  const isDeveloper = process.env.NODE_ENV === "development";
+  const sectionsArray = report.consultantReport ? injectVirtualSections(report.consultantReport, report.isPaid || isDeveloper) : [];
+  const sectionMap = new Map(sectionsArray.map((s: any) => [s.id, s]));
 
   return (
     <>
@@ -472,20 +475,55 @@ function ReportContentV2({
         </div>
 
         <ReportLayout 
-          sections={sections} 
+          sections={sectionsArray} 
           header={<ReportHeader report={report} />}
+          isPaid={report.isPaid}
+          isDeveloper={isDeveloper}
         >
-          {sections.map((section: any, index: number) => {
-            const safeKey = section.id || `fallback-section-${index}`;
-            return <DynamicSectionRenderer key={safeKey} section={section} />;
+          {REPORT_STRUCTURE.FREE.map((structureItem) => {
+            const section = sectionMap.get(structureItem.id);
+            const isFeaturedRecs = structureItem.id === "featured-recommendations";
+            return (
+              <div key={structureItem.id} className="contents">
+                <DynamicSectionRenderer section={section} targetId={structureItem.id} targetTitle={structureItem.title} />
+                
+                {isFeaturedRecs && !report.isPaid && (
+                  <>
+                    {/* Free -> Premium Transition Divider */}
+                    <div className="flex flex-col items-center justify-center py-20 text-center animate-fade-up print:hidden">
+                      <div className="w-px h-16 bg-gradient-to-b from-transparent via-slate-300 to-transparent mb-6"></div>
+                      <h3 className="text-sm font-bold tracking-widest text-slate-400 uppercase mb-2">End of Free Analysis</h3>
+                      <p className="text-slate-500 max-w-md">The insights above highlight your biggest immediate opportunities. What follows is the complete consultant strategy to fix them.</p>
+                      <div className="w-px h-16 bg-gradient-to-b from-transparent via-slate-300 to-transparent mt-6"></div>
+                    </div>
+
+                    <PremiumUpgradeWall 
+                      onUnlock={() => setShowPayment(true)} 
+                      price={process.env.NEXT_PUBLIC_REPORT_PRICE_INR} 
+                    />
+                    
+                    {isDeveloper && (
+                      <div className="flex justify-center mt-12 mb-8 print:hidden animate-fade-up">
+                        <div className="bg-purple-100 text-purple-700 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-widest border border-purple-200 shadow-sm flex items-center gap-2">
+                          <svg viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd"/></svg>
+                          Developer Preview Active
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            );
           })}
 
-          {!report.isPaid && (
-            <PremiumUpgradeWall 
-              onUnlock={() => setShowPayment(true)} 
-              price={process.env.NEXT_PUBLIC_REPORT_PRICE_INR} 
-            />
-          )}
+          {(report.isPaid || isDeveloper) && REPORT_STRUCTURE.PREMIUM.map((structureItem) => {
+            const section = sectionMap.get(structureItem.id);
+            return (
+              <div key={structureItem.id} className="contents">
+                <DynamicSectionRenderer section={section} targetId={structureItem.id} targetTitle={structureItem.title} />
+              </div>
+            );
+          })}
 
           <div className="flex items-center justify-between pt-4 pb-2 print:hidden mt-8">
             <Link href="/" className="btn-ghost text-xs">← Audit another website</Link>

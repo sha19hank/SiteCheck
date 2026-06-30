@@ -1,14 +1,25 @@
 import { ReportSection } from "@/types";
 
-export default function ExecutiveSummaryRenderer({ section }: { section: ReportSection }) {
+export default function ExecutiveSummaryRenderer({ section }: { section?: ReportSection }) {
   // Executive summary content is structured text blocks
-  const content = section.content as any;
-  if (!content) return null;
+  const content = section?.content as any;
+  if (!content) {
+    return (
+      <div className="animate-fade-up">
+        <div className="mb-10 page-break-inside-avoid">
+          <h2 className="text-2xl font-bold text-slate-900 mb-4 pb-4 border-b border-slate-100">Executive Summary</h2>
+          <div className="p-6 border border-dashed border-slate-300 bg-slate-50 rounded-xl text-slate-600 leading-relaxed">
+            The executive summary could not be generated.
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-fade-up">
-      <div className="mb-8 page-break-inside-avoid">
-        <h2 className="text-2xl font-bold text-slate-900 mb-6 pb-4 border-b border-slate-100">{section.title}</h2>
+      <div className="mb-10 page-break-inside-avoid">
+        <h2 className="text-2xl font-bold text-slate-900 mb-4 pb-4 border-b border-slate-100">{section?.title}</h2>
       </div>
 
       <div className="prose prose-slate prose-lg max-w-none text-slate-700 leading-relaxed">

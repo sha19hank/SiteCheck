@@ -353,6 +353,7 @@ export interface ActionableInsight {
   
   // Phase 5.2A additions
   id?: string;
+  category?: string;
   priorityScore?: number;
   priorityTier?: "Tier 1: Do This Today" | "Tier 2: Do This Month" | "Tier 3: Do This Quarter" | "Tier 4: Backlog";
   effortV2?: "Trivial" | "Small" | "Medium" | "Large" | "Major";
@@ -399,6 +400,7 @@ export interface EvidenceItem {
   source: string;
   impact: string;
   relatedRecommendation?: string;
+  recommendationId?: string;
 }
 
 // ─── Phase 5.2A: Consultant Intelligence Engine Types ──────────────────────

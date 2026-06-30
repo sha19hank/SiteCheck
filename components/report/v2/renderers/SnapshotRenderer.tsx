@@ -2,11 +2,31 @@ import { AuditMetricSummary } from "@/types";
 import { groupMetrics } from "../utils/metric-grouping";
 import { cn } from "@/lib/utils";
 
-export default function SnapshotRenderer({ metrics }: { metrics: AuditMetricSummary[] }) {
+export default function SnapshotRenderer({ metrics }: { metrics?: AuditMetricSummary[] }) {
+  if (!metrics || !Array.isArray(metrics) || metrics.length === 0) {
+    return (
+      <div className="animate-fade-up">
+        <div className="mb-10 page-break-inside-avoid">
+          <h2 className="text-2xl font-bold text-slate-900 mb-4 pb-4 border-b border-slate-100">Website Health Snapshot</h2>
+          <div className="p-6 border border-dashed border-slate-300 bg-slate-50 rounded-xl text-slate-600 leading-relaxed">
+            No metrics were successfully captured for this website.
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const groups = groupMetrics(metrics);
 
   return (
     <div className="space-y-10 sm:space-y-12 animate-fade-up">
+      <div className="mb-10 page-break-inside-avoid">
+        <h2 className="text-2xl font-bold text-slate-900 mb-4 pb-4 border-b border-slate-100">Website Health Snapshot</h2>
+        <p className="text-lg text-slate-700 leading-relaxed">
+          Key performance and structural metrics extracted during the audit.
+        </p>
+      </div>
+
       {groups.map((group, gIdx) => (
         <div key={group.title || gIdx} className="space-y-5 sm:space-y-6">
           <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest pb-2 border-b border-slate-100 page-break-inside-avoid">{group.title}</h3>

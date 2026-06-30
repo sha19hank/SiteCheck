@@ -3,9 +3,9 @@ import { CompositionContext, ReportSection } from "@/types";
 
 sectionRegistry.register({
   id: "60-second-assessment",
-  name: "Your Website in 60 Seconds",
-  priority: 95,
-  requiredPlan: "report_unlock",
+  name: "Website in 60 Seconds",
+  priority: 90,
+  requiredPlan: "free",
   applicableWebsiteTypes: "ALL",
   minReportDepth: "STANDARD",
   generate: (context: CompositionContext): ReportSection | null => {
